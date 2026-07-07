@@ -52,8 +52,22 @@
   footer{ margin-top:26px; font-size:12.5px; color:var(--muted); line-height:1.6; }
   footer code{ background:var(--soft); padding:1px 5px; border-radius:4px; }
 
+  /* проявление блоков по мере прокрутки */
+  .rv{ opacity:0; transform:translateY(22px); }
+  .rv.in{ opacity:1; transform:none; transition:opacity .6s ease, transform .65s cubic-bezier(.2,.8,.3,1); }
+  .kpi{ transition:transform .18s ease, box-shadow .2s ease, border-color .2s ease; }
+  .kpi:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -18px rgba(20,32,51,.4); border-color:#cdd8ea; }
+  .panel{ transition:box-shadow .25s ease; }
+  .panel:hover{ box-shadow:0 18px 42px -28px rgba(20,32,51,.35); }
+  .toggle{ display:inline-flex; gap:4px; background:var(--soft); border-radius:999px; padding:3px; margin-left:auto; }
+  .toggle button{ border:0; background:transparent; color:var(--muted); font:600 12.5px "Libre Franklin",sans-serif;
+    padding:5px 13px; border-radius:999px; cursor:pointer; transition:background .2s,color .2s; }
+  .toggle button.on{ background:var(--blue); color:#fff; }
+  .panel .head{ display:flex; align-items:center; gap:12px; }
+  .panel .head h2{ margin:0; }
+
   @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;} }
-  @media (prefers-reduced-motion:reduce){ *{transition:none!important;} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;} .rv{opacity:1;transform:none;} }
 </style>
 </head>
 <body>
@@ -67,8 +81,14 @@
     <div class="kpis" id="kpis"></div>
 
     <div class="panel">
-      <h2>Поток закупок по датам</h2>
-      <p class="cap">Количество размещённых процедур по дню размещения.</p>
+      <div class="head">
+        <h2>Динамика закупок</h2>
+        <div class="toggle" id="tl-toggle">
+          <button data-mode="day" class="on">По дням · шт</button>
+          <button data-mode="month">По месяцам · ₽</button>
+        </div>
+      </div>
+      <p class="cap" id="tl-cap">Количество размещённых процедур по дню размещения.</p>
       <div class="chart-box" id="box-timeline" style="height:300px;"><canvas id="c-timeline"></canvas></div>
     </div>
 
@@ -92,9 +112,22 @@
         <div class="chart-box" style="height:300px;"><canvas id="c-buckets"></canvas></div>
       </div>
       <div class="panel">
+        <h2>Средний чек по способу закупки</h2>
+        <p class="cap">Средняя НМЦК одной процедуры. Аукционы — самые крупные лоты.</p>
+        <div class="chart-box" id="box-avg" style="height:300px;"><canvas id="c-avg"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
         <h2>Топ регионов</h2>
         <p class="cap">По числу закупок. Регион — эвристика по названию заказчика.</p>
         <div class="chart-box" id="box-region" style="height:300px;"><canvas id="c-region"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>Стадии процедур</h2>
+        <p class="cap">На какой стадии находятся закупки в выборке.</p>
+        <div class="chart-box" style="height:300px;"><canvas id="c-stage"></canvas></div>
       </div>
     </div>
 
@@ -113,11 +146,25 @@
 const C={ blue:'#2f6fed', teal:'#12b886', orange:'#e8590c', amber:'#f59f00', violet:'#7048e8', ink:'#142033', muted:'#64708a', line:'#e6ebf2' };
 Chart.defaults.font.family="'Libre Franklin', sans-serif"; Chart.defaults.color=C.muted;
 
+const REDUCE = matchMedia('(prefers-reduced-motion:reduce)').matches;
+Chart.defaults.animation = REDUCE ? false : { duration:900, easing:'easeOutQuart' };
+
 function rub(n){ if(n>=1e9)return (n/1e9).toFixed(2)+' млрд'; if(n>=1e6)return (n/1e6).toFixed(1)+' млн';
-  if(n>=1e3)return Math.round(n/1e3)+' тыс'; return Math.round(n); }
+  if(n>=1e3)return Math.round(n/1e3)+' тыс'; return String(Math.round(n)); }
 function clip(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
 // Экранирование: имена заказчиков берутся из внешнего источника (ЕИС) — защита от XSS в таблице
 function esc(v){ return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const MON=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+function monLabel(ym){ const [y,m]=ym.split('-'); return MON[(+m)-1]+" '"+y.slice(2); }
+
+// ── проявление блоков по мере прокрутки ──
+const revIO = new IntersectionObserver((es)=>{ for(const e of es){ if(e.isIntersecting){ e.target.classList.add('in'); revIO.unobserve(e.target); } } }, {rootMargin:'0px 0px -6% 0px', threshold:.08});
+function reveal(el){ if(!el) return; if(REDUCE){ el.classList.add('in'); return; } el.classList.add('rv'); revIO.observe(el); }
+// ── отрисовать график, когда его блок появится в кадре (анимация Chart.js играет на скролле) ──
+function whenVisible(el, cb){ if(REDUCE||!el){ cb(); return; } const io=new IntersectionObserver((es)=>{ for(const e of es){ if(e.isIntersecting){ io.disconnect(); cb(); } } }, {rootMargin:'0px 0px -8% 0px', threshold:.12}); io.observe(el); }
+// ── одометр: число плавно набегает до значения ──
+function odo(el, to, fmt){ if(REDUCE){ el.innerHTML=fmt(to); return; } const dur=1100, t0=performance.now();
+  (function step(t){ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.innerHTML=fmt(to*e); if(k<1) requestAnimationFrame(step); })(performance.now()); }
 
 fetch('./data.json').then(r=>r.json()).then(init).catch(()=>{
   document.querySelector('.wrap').insertAdjacentHTML('beforeend',
@@ -127,60 +174,110 @@ fetch('./data.json').then(r=>r.json()).then(init).catch(()=>{
 function init(d){
   const k=d.kpis;
   document.getElementById('period').textContent = `${k.date_from} – ${k.date_to}`;
-  document.getElementById('kpis').innerHTML = `
-    <div class="kpi accent"><div class="n mono">${rub(k.total_sum)}<small> ₽</small></div><div class="l">Сумма НМЦК в выборке</div></div>
-    <div class="kpi"><div class="n mono">${k.records}</div><div class="l">Закупок собрано</div></div>
-    <div class="kpi"><div class="n mono">${rub(k.median_price)}<small> ₽</small></div><div class="l">Медиана НМЦК</div></div>
-    <div class="kpi"><div class="n mono">${k.auction_share}%</div><div class="l">Доля аукционов</div></div>
-    <div class="kpi"><div class="n mono">${k.regions}</div><div class="l">Регионов затронуто</div></div>`;
 
-  // Timeline
-  const tl=d.timeline;
-  new Chart(document.getElementById('c-timeline'),{ type:'line',
-    data:{ labels: tl.map(x=>x.date),
-      datasets:[{ data: tl.map(x=>x.count), borderColor:C.blue, backgroundColor:'rgba(47,111,237,.12)',
-        fill:true, tension:.3, pointRadius:0, borderWidth:2 }] },
-    options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:(c)=>`${c.raw} закупок`}}},
-      scales:{ x:{ grid:{display:false}, ticks:{maxTicksLimit:10,font:{size:10}} },
-               y:{ grid:{color:C.line}, beginAtZero:true } } } });
+  // ── KPI с одометрами ──
+  const kdefs=[
+    {v:k.total_sum,    fmt:v=>rub(v)+'<small> ₽</small>', l:'Сумма НМЦК в выборке', accent:true},
+    {v:k.records,      fmt:v=>String(Math.round(v)),       l:'Закупок собрано'},
+    {v:k.median_price, fmt:v=>rub(v)+'<small> ₽</small>', l:'Медиана НМЦК'},
+    {v:k.auction_share,fmt:v=>v.toFixed(1)+'%',            l:'Доля аукционов'},
+    {v:k.regions,      fmt:v=>String(Math.round(v)),       l:'Регионов затронуто'},
+  ];
+  const kwrap=document.getElementById('kpis');
+  kwrap.innerHTML=kdefs.map((x,i)=>`<div class="kpi ${x.accent?'accent':''}"><div class="n mono" id="kn${i}">0</div><div class="l">${x.l}</div></div>`).join('');
+  whenVisible(kwrap, ()=>kdefs.forEach((x,i)=>odo(document.getElementById('kn'+i), x.v, x.fmt)));
 
-  // Способы
+  // проявляем секции по мере прокрутки
+  document.querySelectorAll('.panel, .kpis').forEach(reveal);
+
+  // ── Динамика: переключатель «по дням · шт» / «по месяцам · ₽» ──
+  let tlChart=null;
+  function buildTimeline(mode){
+    const cv=document.getElementById('c-timeline'), cap=document.getElementById('tl-cap');
+    if(tlChart) tlChart.destroy();
+    if(mode==='month'){
+      const mo=d.monthly;
+      cap.textContent='Сумма НМЦК размещённых процедур по месяцам, ₽.';
+      tlChart=new Chart(cv,{ type:'bar',
+        data:{ labels: mo.map(x=>monLabel(x.month)),
+          datasets:[{ data: mo.map(x=>x.sum), backgroundColor:C.blue, borderRadius:6, barPercentage:.6 }] },
+        options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:(c)=>rub(c.raw)+' ₽'}}},
+          scales:{ x:{grid:{display:false}}, y:{grid:{color:C.line},beginAtZero:true,ticks:{callback:v=>rub(v)}} } } });
+    } else {
+      const tl=d.timeline;
+      cap.textContent='Количество размещённых процедур по дню размещения.';
+      tlChart=new Chart(cv,{ type:'line',
+        data:{ labels: tl.map(x=>x.date),
+          datasets:[{ data: tl.map(x=>x.count), borderColor:C.blue, backgroundColor:'rgba(47,111,237,.12)',
+            fill:true, tension:.3, pointRadius:0, borderWidth:2 }] },
+        options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:(c)=>`${c.raw} закупок`}}},
+          scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:10,font:{size:10}}},
+                   y:{grid:{color:C.line},beginAtZero:true} } } });
+    }
+  }
+  document.querySelectorAll('#tl-toggle button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#tl-toggle button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); buildTimeline(b.dataset.mode);
+  }));
+  whenVisible(document.getElementById('box-timeline'), ()=>buildTimeline('day'));
+
+  // ── Способы ──
   const bm=d.by_method;
   document.getElementById('box-method').style.height=(bm.length*34+30)+'px';
-  new Chart(document.getElementById('c-method'),{ type:'bar',
+  whenVisible(document.getElementById('c-method'), ()=> new Chart(document.getElementById('c-method'),{ type:'bar',
     data:{ labels: bm.map(x=>clip(x.method,26)),
       datasets:[{ data: bm.map(x=>x.count), backgroundColor:C.blue, borderRadius:4, barPercentage:.75 }] },
     options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
 
-  // Закон donut
+  // ── Закон donut ──
   const bl=d.by_law;
-  new Chart(document.getElementById('c-law'),{ type:'doughnut',
+  whenVisible(document.getElementById('c-law'), ()=> new Chart(document.getElementById('c-law'),{ type:'doughnut',
     data:{ labels: bl.map(x=>x.law),
       datasets:[{ data: bl.map(x=>x.count), backgroundColor:[C.blue,C.amber], borderWidth:0 }] },
     options:{ maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } });
+      plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } }));
 
-  // Корзины
+  // ── Корзины цены ──
   const bk=d.buckets;
-  new Chart(document.getElementById('c-buckets'),{ type:'bar',
+  whenVisible(document.getElementById('c-buckets'), ()=> new Chart(document.getElementById('c-buckets'),{ type:'bar',
     data:{ labels: bk.map(x=>x.label),
       datasets:[{ data: bk.map(x=>x.count),
         backgroundColor:[C.teal,C.blue,C.violet,C.amber,C.orange], borderRadius:4, barPercentage:.7 }] },
     options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:C.line},beginAtZero:true} } } });
+      scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:C.line},beginAtZero:true} } } }));
 
-  // Регионы
+  // ── Средний чек по способу (новый) ──
+  const av=d.avg_by_method;
+  document.getElementById('box-avg').style.height=(av.length*34+30)+'px';
+  whenVisible(document.getElementById('c-avg'), ()=> new Chart(document.getElementById('c-avg'),{ type:'bar',
+    data:{ labels: av.map(x=>clip(x.method,26)),
+      datasets:[{ data: av.map(x=>Math.round(x.avg)), backgroundColor:C.orange, borderRadius:4, barPercentage:.75 }] },
+    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>rub(c.raw)+' ₽'}}},
+      scales:{ x:{grid:{color:C.line},ticks:{callback:v=>rub(v)}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
+
+  // ── Регионы ──
   const rg=d.top_regions.slice(0,10);
   document.getElementById('box-region').style.height=(rg.length*24+30)+'px';
-  new Chart(document.getElementById('c-region'),{ type:'bar',
+  whenVisible(document.getElementById('c-region'), ()=> new Chart(document.getElementById('c-region'),{ type:'bar',
     data:{ labels: rg.map(x=>x.region),
       datasets:[{ data: rg.map(x=>x.count), backgroundColor:C.teal, borderRadius:3, barPercentage:.8 }] },
     options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
 
-  // Таблица заказчиков
+  // ── Стадии процедур (новый) ──
+  const st=d.by_stage;
+  whenVisible(document.getElementById('c-stage'), ()=> new Chart(document.getElementById('c-stage'),{ type:'doughnut',
+    data:{ labels: st.map(x=>x.stage),
+      datasets:[{ data: st.map(x=>x.count), backgroundColor:[C.teal,C.blue,C.amber,C.orange,C.violet], borderWidth:0 }] },
+    options:{ maintainAspectRatio:false, cutout:'58%',
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } }));
+
+  // ── Таблица заказчиков ──
   document.querySelector('#tbl tbody').innerHTML = d.top_customers.map((r,i)=>`<tr>
     <td class="rank mono">${i+1}</td><td>${esc(r.customer)}</td>
     <td class="mono">${r.count}</td><td class="mono">${rub(r.sum)} ₽</td></tr>`).join('');

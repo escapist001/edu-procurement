@@ -63,6 +63,25 @@ def main() -> None:
     timeline = [{"date": str(r["date"]), "count": int(r["count"]),
                  "sum": float(r["sum"] or 0)} for _, r in daily.iterrows()]
 
+    # --- Помесячная динамика: количество и сумма НМЦК ---
+    dmonth = df.dropna(subset=["date"]).copy()
+    dmonth["month"] = dmonth["date"].dt.to_period("M").astype(str)
+    monthly_g = (dmonth.groupby("month")
+                 .agg(count=("number", "size"), sum=("price_rub", "sum"))
+                 .reset_index().sort_values("month"))
+    monthly = [{"month": r["month"], "count": int(r["count"]),
+                "sum": float(r["sum"] or 0)} for _, r in monthly_g.iterrows()]
+
+    # --- Средний чек по способу закупки (для топ-способов) ---
+    method_order = list(by_method["method"])
+    avg_g = (priced[priced["method"].isin(method_order)]
+             .groupby("method")["price_rub"].mean())
+    avg_by_method = [{"method": m, "avg": float(avg_g.get(m, 0))} for m in method_order]
+
+    # --- Стадии процедур (воронка «где сейчас закупка») ---
+    stage_g = df["stage"].value_counts().head(5)
+    by_stage = [{"stage": k, "count": int(v)} for k, v in stage_g.items()]
+
     # --- Топ заказчиков ---
     top_cust = (priced.groupby("customer")
                 .agg(count=("number", "size"), sum=("price_rub", "sum"))
@@ -95,6 +114,9 @@ def main() -> None:
         "by_law": by_law.to_dict(orient="records"),
         "buckets": buckets,
         "timeline": timeline,
+        "monthly": monthly,
+        "avg_by_method": avg_by_method,
+        "by_stage": by_stage,
         "top_customers": top_customers,
         "top_regions": top_regions,
     }
