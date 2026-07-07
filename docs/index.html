@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Госзакупки учебного оборудования · ЕИС · дашборд</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --bg:#fbfcfe; --panel:#ffffff; --line:#e6ebf2; --ink:#142033; --muted:#64708a;
+    --blue:#2f6fed; --teal:#12b886; --orange:#e8590c; --amber:#f59f00; --violet:#7048e8; --soft:#eef3fd;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Libre Franklin",-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:"Space Mono",monospace; }
+  .wrap{ max-width:1120px; margin:0 auto; padding:34px 26px 70px; }
+
+  .eyebrow{ font-size:12px; letter-spacing:2.5px; text-transform:uppercase; color:var(--blue);
+    font-weight:700; display:flex; gap:10px; align-items:center; }
+  .rule{ height:1px; flex:1; background:var(--line); }
+  h1{ font-size:clamp(28px,4.6vw,44px); line-height:1.07; font-weight:800; letter-spacing:-1px;
+    margin:16px 0 12px; max-width:22ch; }
+  h1 .hl{ color:var(--blue); }
+  .dek{ font-size:16.5px; line-height:1.55; color:var(--muted); max-width:66ch; margin:0; }
+  .dek b{ color:var(--ink); }
+
+  .kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:13px; margin:30px 0 8px; }
+  .kpi{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 16px; }
+  .kpi .n{ font-size:26px; font-weight:700; line-height:1; letter-spacing:-.5px; }
+  .kpi .n small{ font-size:13px; color:var(--muted); font-weight:400; }
+  .kpi .l{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
+  .kpi.accent .n{ color:var(--blue); }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px; margin-top:20px; }
+  .panel h2{ font-size:18px; font-weight:700; margin:0 0 4px; letter-spacing:-.3px; }
+  .panel .cap{ font-size:13px; color:var(--muted); margin:0 0 16px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .chart-box{ position:relative; }
+
+  table{ border-collapse:collapse; width:100%; font-size:14px; }
+  th,td{ padding:9px 12px; border-bottom:1px solid var(--line); text-align:right; }
+  th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){ text-align:left; }
+  th{ font-size:12px; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  tbody tr:hover{ background:var(--soft); }
+  td.mono{ font-family:"Space Mono",monospace; }
+  .rank{ color:var(--muted); width:30px; }
+
+  footer{ margin-top:26px; font-size:12.5px; color:var(--muted); line-height:1.6; }
+  footer code{ background:var(--soft); padding:1px 5px; border-radius:4px; }
+
+  @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Госзакупки · Учебное оборудование · ЕИС<span class="rule"></span></div>
+    <h1>Рынок школьного оборудования — <span class="hl">1000 закупок</span> на живом срезе ЕИС</h1>
+    <p class="dek">Свежая выборка тендеров по запросу «учебное оборудование» (44-ФЗ и 223-ФЗ), собранная
+      <b>собственным парсером zakupki.gov.ru</b>. Период размещения: <b id="period">—</b>.
+      Ниже — куда идут деньги, какими способами закупают и кто главные заказчики.</p>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="panel">
+      <h2>Поток закупок по датам</h2>
+      <p class="cap">Количество размещённых процедур по дню размещения.</p>
+      <div class="chart-box" id="box-timeline" style="height:300px;"><canvas id="c-timeline"></canvas></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Способы закупки</h2>
+        <p class="cap">Как именно закупают учебное оборудование.</p>
+        <div class="chart-box" id="box-method" style="height:300px;"><canvas id="c-method"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>44-ФЗ против 223-ФЗ</h2>
+        <p class="cap">Распределение по закону о закупках.</p>
+        <div class="chart-box" style="height:300px;"><canvas id="c-law"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Цена контракта (НМЦК)</h2>
+        <p class="cap">Сколько стоят закупки — распределение по корзинам.</p>
+        <div class="chart-box" style="height:300px;"><canvas id="c-buckets"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>Топ регионов</h2>
+        <p class="cap">По числу закупок. Регион — эвристика по названию заказчика.</p>
+        <div class="chart-box" id="box-region" style="height:300px;"><canvas id="c-region"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Крупнейшие заказчики</h2>
+      <p class="cap">По суммарной НМЦК в выборке.</p>
+      <table id="tbl"><thead><tr>
+        <th class="rank">#</th><th>Заказчик</th><th>Закупок</th><th>Сумма НМЦК</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <footer id="foot"></footer>
+  </div>
+
+<script>
+const C={ blue:'#2f6fed', teal:'#12b886', orange:'#e8590c', amber:'#f59f00', violet:'#7048e8', ink:'#142033', muted:'#64708a', line:'#e6ebf2' };
+Chart.defaults.font.family="'Libre Franklin', sans-serif"; Chart.defaults.color=C.muted;
+
+function rub(n){ if(n>=1e9)return (n/1e9).toFixed(2)+' млрд'; if(n>=1e6)return (n/1e6).toFixed(1)+' млн';
+  if(n>=1e3)return Math.round(n/1e3)+' тыс'; return Math.round(n); }
+function clip(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
+
+fetch('./data.json').then(r=>r.json()).then(init).catch(()=>{
+  document.querySelector('.wrap').insertAdjacentHTML('beforeend',
+    '<p style="color:#c0392b">Не удалось загрузить data.json. Запусти через <code>python -m http.server</code> в папке web.</p>');
+});
+
+function init(d){
+  const k=d.kpis;
+  document.getElementById('period').textContent = `${k.date_from} – ${k.date_to}`;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi accent"><div class="n mono">${rub(k.total_sum)}<small> ₽</small></div><div class="l">Сумма НМЦК в выборке</div></div>
+    <div class="kpi"><div class="n mono">${k.records}</div><div class="l">Закупок собрано</div></div>
+    <div class="kpi"><div class="n mono">${rub(k.median_price)}<small> ₽</small></div><div class="l">Медиана НМЦК</div></div>
+    <div class="kpi"><div class="n mono">${k.auction_share}%</div><div class="l">Доля аукционов</div></div>
+    <div class="kpi"><div class="n mono">${k.regions}</div><div class="l">Регионов затронуто</div></div>`;
+
+  // Timeline
+  const tl=d.timeline;
+  new Chart(document.getElementById('c-timeline'),{ type:'line',
+    data:{ labels: tl.map(x=>x.date),
+      datasets:[{ data: tl.map(x=>x.count), borderColor:C.blue, backgroundColor:'rgba(47,111,237,.12)',
+        fill:true, tension:.3, pointRadius:0, borderWidth:2 }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>`${c.raw} закупок`}}},
+      scales:{ x:{ grid:{display:false}, ticks:{maxTicksLimit:10,font:{size:10}} },
+               y:{ grid:{color:C.line}, beginAtZero:true } } } });
+
+  // Способы
+  const bm=d.by_method;
+  document.getElementById('box-method').style.height=(bm.length*34+30)+'px';
+  new Chart(document.getElementById('c-method'),{ type:'bar',
+    data:{ labels: bm.map(x=>clip(x.method,26)),
+      datasets:[{ data: bm.map(x=>x.count), backgroundColor:C.blue, borderRadius:4, barPercentage:.75 }] },
+    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+
+  // Закон donut
+  const bl=d.by_law;
+  new Chart(document.getElementById('c-law'),{ type:'doughnut',
+    data:{ labels: bl.map(x=>x.law),
+      datasets:[{ data: bl.map(x=>x.count), backgroundColor:[C.blue,C.amber], borderWidth:0 }] },
+    options:{ maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } });
+
+  // Корзины
+  const bk=d.buckets;
+  new Chart(document.getElementById('c-buckets'),{ type:'bar',
+    data:{ labels: bk.map(x=>x.label),
+      datasets:[{ data: bk.map(x=>x.count),
+        backgroundColor:[C.teal,C.blue,C.violet,C.amber,C.orange], borderRadius:4, barPercentage:.7 }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:C.line},beginAtZero:true} } } });
+
+  // Регионы
+  const rg=d.top_regions.slice(0,10);
+  document.getElementById('box-region').style.height=(rg.length*24+30)+'px';
+  new Chart(document.getElementById('c-region'),{ type:'bar',
+    data:{ labels: rg.map(x=>x.region),
+      datasets:[{ data: rg.map(x=>x.count), backgroundColor:C.teal, borderRadius:3, barPercentage:.8 }] },
+    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } });
+
+  // Таблица заказчиков
+  document.querySelector('#tbl tbody').innerHTML = d.top_customers.map((r,i)=>`<tr>
+    <td class="rank mono">${i+1}</td><td>${r.customer}</td>
+    <td class="mono">${r.count}</td><td class="mono">${rub(r.sum)} ₽</td></tr>`).join('');
+
+  document.getElementById('foot').innerHTML =
+    `Источник: ${d.source}. Данные собраны парсером <code>parser.py</code> (requests + BeautifulSoup), `+
+    `посчитаны в <code>analysis.py</code> (pandas), период размещения ${k.date_from} – ${k.date_to}. `+
+    `Регион — эвристика по названию заказчика, возможны неточности.`;
+}
+</script>
+</body>
+</html>
