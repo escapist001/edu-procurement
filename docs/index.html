@@ -116,6 +116,8 @@ Chart.defaults.font.family="'Libre Franklin', sans-serif"; Chart.defaults.color=
 function rub(n){ if(n>=1e9)return (n/1e9).toFixed(2)+' млрд'; if(n>=1e6)return (n/1e6).toFixed(1)+' млн';
   if(n>=1e3)return Math.round(n/1e3)+' тыс'; return Math.round(n); }
 function clip(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
+// Экранирование: имена заказчиков берутся из внешнего источника (ЕИС) — защита от XSS в таблице
+function esc(v){ return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 fetch('./data.json').then(r=>r.json()).then(init).catch(()=>{
   document.querySelector('.wrap').insertAdjacentHTML('beforeend',
@@ -180,7 +182,7 @@ function init(d){
 
   // Таблица заказчиков
   document.querySelector('#tbl tbody').innerHTML = d.top_customers.map((r,i)=>`<tr>
-    <td class="rank mono">${i+1}</td><td>${r.customer}</td>
+    <td class="rank mono">${i+1}</td><td>${esc(r.customer)}</td>
     <td class="mono">${r.count}</td><td class="mono">${rub(r.sum)} ₽</td></tr>`).join('');
 
   document.getElementById('foot').innerHTML =
