@@ -27,6 +27,21 @@ PRICE_BUCKETS = [
 ]
 
 
+def short_method(m: str) -> str:
+    """Короткие, читаемые ярлыки способов закупки для фильтров и графиков."""
+    m = str(m)
+    smp = "СМП" if ("малого и среднего" in m or "субъекты малого" in m) else ""
+    if "аукцион" in m.lower():
+        return "Аукцион (СМП)" if smp else "Электронный аукцион"
+    if "котиров" in m.lower():
+        return "Котировки (СМП)" if smp else "Запрос котировок"
+    if "93" in m or "единствен" in m.lower():
+        return "Ед. поставщик"
+    if "предложен" in m.lower():
+        return "Запрос предложений"
+    return "Иной способ"
+
+
 def short_customer(name: str) -> str:
     """Убираем оргправовую форму для читаемости в топе."""
     for junk in ['МУНИЦИПАЛЬНОЕ', 'ГОСУДАРСТВЕННОЕ', 'КАЗЁННОЕ', 'КАЗЕННОЕ',
@@ -122,6 +137,30 @@ def main() -> None:
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # --- Построчная выгрузка для клиентских фильтров (интерактивный дашборд) ---
+    # Компактно: короткие ключи, только нужные поля. Дашборд считает все срезы сам.
+    rows = []
+    dd = df.copy()
+    dd["m"] = dd["date"].dt.to_period("M").astype(str)
+    for _, r in dd.iterrows():
+        price = r["price_rub"]
+        rows.append({
+            "law": "44" if r["law"] == "44-ФЗ" else "223",
+            "mt": short_method(r["method"]),
+            "p": None if pd.isna(price) else int(price),
+            "rg": r["region"] if r["region"] != "Не определён" else None,
+            "mo": None if pd.isna(r["date"]) else r["m"],
+            "st": r["stage"],
+            "c": short_customer(r["customer"]),
+        })
+    rows_out = ROOT / "docs" / "rows.json"
+    rows_out.write_text(json.dumps({
+        "source": payload["source"],
+        "generated_period": [kpis["date_from"], kpis["date_to"]],
+        "rows": rows,
+    }, ensure_ascii=False), encoding="utf-8")
+    print(f"Построчно выгружено: {len(rows)} записей в {rows_out.name}")
 
     print(f"Записей: {kpis['records']}")
     print(f"Сумма НМЦК: {kpis['total_sum']:,.0f} руб")

@@ -3,289 +3,773 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Госзакупки учебного оборудования · ЕИС · дашборд</title>
+<title>Радар госзаказа · разведка рынка учебного оборудования (ЕИС)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root{
-    --bg:#fbfcfe; --panel:#ffffff; --line:#e6ebf2; --ink:#142033; --muted:#64708a;
-    --blue:#2f6fed; --teal:#12b886; --orange:#e8590c; --amber:#f59f00; --violet:#7048e8; --soft:#eef3fd;
+    --bg:#0C111C; --surface:#121A2A; --surface-2:#0f1725; --line:#22304A; --line-soft:#1B2536;
+    --text:#EAF0FA; --muted:#94A3BF; --dim:#5C6B85;
+    --amber:#F2A93B; --amber-dk:#c9862a;
+    --m-auction:#5B8DEF; --m-auction-smp:#9B8AFB; --m-kotir:#46C2CB; --m-kotir-smp:#7DD3D8;
+    --m-single:#E4728F; --m-other:#64748B;
   }
-  *{box-sizing:border-box;}
-  body{ margin:0; background:var(--bg); color:var(--ink);
-    font-family:"Libre Franklin",-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
-  .mono{ font-family:"Space Mono",monospace; }
-  .wrap{ max-width:1120px; margin:0 auto; padding:34px 26px 70px; }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--text);
+    font-family:"Golos Text",-apple-system,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    font-size:15px; line-height:1.5; }
+  .mono{ font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; }
+  .wrap{ max-width:1320px; margin:0 auto; padding:0 22px; }
+  a{ color:var(--amber); }
 
-  .eyebrow{ font-size:12px; letter-spacing:2.5px; text-transform:uppercase; color:var(--blue);
-    font-weight:700; display:flex; gap:10px; align-items:center; }
-  .rule{ height:1px; flex:1; background:var(--line); }
-  h1{ font-size:clamp(28px,4.6vw,44px); line-height:1.07; font-weight:800; letter-spacing:-1px;
-    margin:16px 0 12px; max-width:22ch; }
-  h1 .hl{ color:var(--blue); }
-  .dek{ font-size:16.5px; line-height:1.55; color:var(--muted); max-width:66ch; margin:0; }
-  .dek b{ color:var(--ink); }
+  /* ── ХЕДЕР ── */
+  header{ position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
+  .marquee{ position:absolute; inset:0; display:flex; align-items:center; pointer-events:none;
+    font-family:"JetBrains Mono",monospace; font-size:52px; font-weight:700; white-space:nowrap;
+    color:#fff; opacity:.04; letter-spacing:2px; }
+  .marquee span{ animation:slide 90s linear infinite; }
+  @keyframes slide{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+  .head-in{ position:relative; padding:34px 0 26px; }
+  .kicker{ font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--amber); display:flex; align-items:center; gap:10px; }
+  .kicker .dot{ width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 10px var(--amber); }
+  h1{ font-size:clamp(30px,5vw,52px); font-weight:800; letter-spacing:-.02em; line-height:1.02; margin:14px 0 0; }
+  h1 .amber{ color:var(--amber); }
+  .lead{ color:var(--muted); font-size:16.5px; max-width:76ch; margin:14px 0 0; line-height:1.55; }
+  .lead b{ color:var(--text); font-weight:600; }
+  .prov{ font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--dim); margin-top:14px; letter-spacing:.02em; }
 
-  .kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:13px; margin:30px 0 8px; }
-  .kpi{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 16px; }
-  .kpi .n{ font-size:26px; font-weight:700; line-height:1; letter-spacing:-.5px; }
+  /* ── ФИЛЬТР-БАР ── */
+  .filterbar{ position:sticky; top:0; z-index:40; background:rgba(12,17,28,.82);
+    backdrop-filter:blur(14px) saturate(1.2); border-bottom:1px solid var(--line); }
+  .fb-in{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:12px 0; }
+  .fb-group{ display:flex; align-items:center; gap:8px; }
+  .fb-label{ font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); }
+  .seg{ display:inline-flex; gap:3px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; padding:3px; }
+  .seg button{ border:0; background:transparent; color:var(--muted); cursor:pointer;
+    font:600 12.5px "Golos Text",sans-serif; padding:6px 12px; border-radius:6px; transition:background .18s,color .18s; white-space:nowrap; }
+  .seg button:hover{ color:var(--text); }
+  .seg button.on{ background:var(--amber); color:#161007; }
+  .seg button.on.m{ color:#0C111C; }
+  .region-in{ position:relative; }
+  .region-in input{ background:var(--surface-2); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font:500 13px "Golos Text",sans-serif; padding:7px 11px; width:170px; outline:none; }
+  .region-in input:focus{ border-color:var(--amber); }
+  .region-in datalist{ display:none; }
+  .fb-right{ margin-left:auto; display:flex; align-items:center; gap:14px; }
+  .count{ font-family:"JetBrains Mono",monospace; font-size:13px; color:var(--muted); }
+  .count b{ color:var(--amber); font-weight:700; }
+  .btn-ghost{ background:transparent; border:1px solid var(--line); color:var(--muted); cursor:pointer;
+    font:600 12.5px "Golos Text",sans-serif; padding:7px 13px; border-radius:8px; transition:.18s; }
+  .btn-ghost:hover{ border-color:var(--amber); color:var(--amber); }
+  .chips{ display:flex; gap:7px; flex-wrap:wrap; padding:0 0 12px; }
+  .chip{ display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600;
+    background:rgba(242,169,59,.1); color:var(--amber); border:1px solid rgba(242,169,59,.3);
+    padding:5px 8px 5px 11px; border-radius:999px; }
+  .chip button{ background:none; border:0; color:inherit; cursor:pointer; font-size:14px; line-height:1; padding:0 2px; opacity:.7; }
+  .chip button:hover{ opacity:1; }
+
+  /* ── KPI ── */
+  .kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:22px 0 6px; }
+  .kpi{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:15px 16px; position:relative; overflow:hidden; }
+  .kpi .l{ font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+  .kpi .n{ font-family:"JetBrains Mono",monospace; font-size:27px; font-weight:700; margin-top:9px; line-height:1; letter-spacing:-.5px; }
   .kpi .n small{ font-size:13px; color:var(--muted); font-weight:400; }
-  .kpi .l{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
-  .kpi.accent .n{ color:var(--blue); }
+  .kpi.accent .n{ color:var(--amber); }
+  .kpi .sub{ font-size:11.5px; color:var(--dim); margin-top:7px; }
+  .kpi canvas{ position:absolute; right:8px; bottom:8px; width:80px !important; height:26px !important; opacity:.8; }
 
-  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px; margin-top:20px; }
-  .panel h2{ font-size:18px; font-weight:700; margin:0 0 4px; letter-spacing:-.3px; }
-  .panel .cap{ font-size:13px; color:var(--muted); margin:0 0 16px; }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  .chart-box{ position:relative; }
+  /* ── СЕКЦИИ / КАРТОЧКИ ── */
+  .eyebrow{ font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--amber); display:flex; align-items:center; gap:9px; }
+  .eyebrow .num{ color:var(--dim); }
+  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:18px 20px; }
+  .panel h2{ font-size:18px; font-weight:700; margin:9px 0 3px; letter-spacing:-.2px; }
+  .panel .how{ font-size:13px; color:var(--muted); margin:0 0 14px; }
+  .cbox{ position:relative; }
 
-  table{ border-collapse:collapse; width:100%; font-size:14px; }
-  th,td{ padding:9px 12px; border-bottom:1px solid var(--line); text-align:right; }
-  th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){ text-align:left; }
-  th{ font-size:12px; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
-  tbody tr:hover{ background:var(--soft); }
-  td.mono{ font-family:"Space Mono",monospace; }
-  .rank{ color:var(--muted); width:30px; }
+  .layout{ display:grid; grid-template-columns:1fr 312px; gap:16px; margin-top:16px; align-items:start; }
+  .col-main{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
-  footer{ margin-top:26px; font-size:12.5px; color:var(--muted); line-height:1.6; }
-  footer code{ background:var(--soft); padding:1px 5px; border-radius:4px; }
+  /* Выводы (sticky) */
+  .insights{ position:sticky; top:64px; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:18px 18px 8px; }
+  .insights h3{ font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  .ins{ display:flex; gap:11px; padding:0 0 16px; font-size:13.5px; line-height:1.5; color:var(--muted); }
+  .ins .mk{ width:8px; height:8px; border-radius:50%; margin-top:6px; flex:0 0 auto; background:var(--amber); }
+  .ins b{ color:var(--text); font-weight:600; }
+  .ins .mono{ color:var(--text); }
+  .ins.warn .mk{ background:var(--m-single); }
+  .ins.warn{ color:#f2b8c4; }
 
-  /* проявление блоков по мере прокрутки */
-  .rv{ opacity:0; transform:translateY(22px); }
-  .rv.in{ opacity:1; transform:none; transition:opacity .6s ease, transform .65s cubic-bezier(.2,.8,.3,1); }
-  .kpi{ transition:transform .18s ease, box-shadow .2s ease, border-color .2s ease; }
-  .kpi:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -18px rgba(20,32,51,.4); border-color:#cdd8ea; }
-  .panel{ transition:box-shadow .25s ease; }
-  .panel:hover{ box-shadow:0 18px 42px -28px rgba(20,32,51,.35); }
-  .toggle{ display:inline-flex; gap:4px; background:var(--soft); border-radius:999px; padding:3px; margin-left:auto; }
-  .toggle button{ border:0; background:transparent; color:var(--muted); font:600 12.5px "Libre Franklin",sans-serif;
-    padding:5px 13px; border-radius:999px; cursor:pointer; transition:background .2s,color .2s; }
-  .toggle button.on{ background:var(--blue); color:#fff; }
-  .panel .head{ display:flex; align-items:center; gap:12px; }
-  .panel .head h2{ margin:0; }
+  /* Теплокарта способ×сегмент */
+  .heat{ width:100%; border-collapse:separate; border-spacing:3px; }
+  .heat th{ font-family:"JetBrains Mono",monospace; font-size:10.5px; font-weight:500; color:var(--dim);
+    text-transform:uppercase; letter-spacing:.04em; padding:4px 6px; text-align:center; white-space:nowrap; }
+  .heat th.rowh{ text-align:left; font-weight:600; color:var(--muted); }
+  .heat td{ text-align:center; padding:0; }
+  .heat .cell{ font-family:"JetBrains Mono",monospace; font-size:13px; font-weight:600; color:#eaf0fa;
+    padding:11px 6px; border-radius:6px; cursor:pointer; transition:transform .12s, outline .12s; outline:1px solid transparent; }
+  .heat .cell:hover{ transform:scale(1.04); outline:1px solid var(--amber); }
+  .heat .cell.zero{ color:var(--dim); cursor:default; }
+  .heat .cell.sel{ outline:2px solid var(--amber); }
 
-  @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;} }
-  @media (prefers-reduced-motion:reduce){ *{transition:none!important;} .rv{opacity:1;transform:none;} }
+  /* 100%-стек закон/способ в KPI-ленте */
+  .split{ margin-top:6px; }
+  .split .bar{ display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2); }
+  .split .bar > i{ display:block; height:100%; cursor:pointer; transition:opacity .18s; }
+  .split .bar > i:hover{ opacity:.82; }
+  .split .lg{ display:flex; flex-wrap:wrap; gap:5px 14px; margin-top:9px; font-size:12px; color:var(--muted); }
+  .split .lg span{ display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .split .lg .sw{ width:9px; height:9px; border-radius:2px; }
+  .split .lg .off{ opacity:.4; }
+
+  table.tbl{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.tbl th,table.tbl td{ padding:8px 10px; border-bottom:1px solid var(--line-soft); text-align:right; }
+  table.tbl th:first-child,table.tbl td:first-child,table.tbl th:nth-child(2),table.tbl td:nth-child(2){ text-align:left; }
+  table.tbl th{ font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+  table.tbl tbody tr{ cursor:pointer; }
+  table.tbl tbody tr:hover{ background:rgba(242,169,59,.06); }
+  .rank{ color:var(--dim); width:26px; }
+
+  /* Кастомный тултип */
+  #tt{ position:fixed; z-index:80; pointer-events:none; opacity:0; transition:opacity .12s;
+    background:#0a0f1a; border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:12.5px;
+    box-shadow:0 18px 40px -18px rgba(0,0,0,.8); max-width:240px; }
+  #tt .tt-h{ font-weight:700; margin-bottom:5px; color:var(--text); }
+  #tt .tt-r{ font-family:"JetBrains Mono",monospace; color:var(--muted); }
+  #tt .tt-r b{ color:var(--amber); }
+
+  footer{ border-top:1px solid var(--line); margin-top:34px; padding:24px 0 60px; font-size:12.5px; color:var(--dim); line-height:1.7; }
+  footer code{ background:var(--surface); padding:1px 6px; border-radius:4px; color:var(--muted); }
+  footer .fbtn{ margin-top:12px; }
+
+  @media (max-width:1000px){
+    .layout{ grid-template-columns:1fr; } .insights{ position:static; }
+    .kpis{ grid-template-columns:repeat(2,1fr); } .grid2{ grid-template-columns:1fr; }
+  }
+  @media (max-width:560px){ .kpis{ grid-template-columns:1fr; } .fb-right{ margin-left:0; width:100%; } }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; scroll-behavior:auto; } }
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:2px; border-radius:4px; }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="eyebrow">Госзакупки · Учебное оборудование · ЕИС<span class="rule"></span></div>
-    <h1>Рынок школьного оборудования — <span class="hl">1000 закупок</span> на живом срезе ЕИС</h1>
-    <p class="dek">Свежая выборка тендеров по запросу «учебное оборудование» (44-ФЗ и 223-ФЗ), собранная
-      <b>собственным парсером zakupki.gov.ru</b>. Период размещения: <b id="period">—</b>.
-      Ниже — куда идут деньги, какими способами закупают и кто главные заказчики.</p>
+  <header>
+    <div class="marquee" aria-hidden="true"><span id="marquee"></span></div>
+    <div class="wrap head-in">
+      <div class="kicker"><span class="dot"></span>Радар госзаказа · ЕИС · учебное оборудование</div>
+      <h1>Куда поставщику идти <span class="amber">за деньгами</span></h1>
+      <p class="lead">1 000 контрактов с zakupki.gov.ru на <b>5,76 млрд ₽</b>, декабрь 2025 — июль 2026, собраны
+        собственным парсером ЕИС. Один вопрос: в какой регион ехать, через какую процедуру заходить,
+        с каким чеком и когда. Фильтруй — весь экран пересчитывается под твою гипотезу.</p>
+      <div class="prov" id="prov">источник: ЕИС zakupki.gov.ru · парсер: python (requests + bs4) · 1 000 записей</div>
+    </div>
+  </header>
 
-    <div class="kpis" id="kpis"></div>
-
-    <div class="panel">
-      <div class="head">
-        <h2>Динамика закупок</h2>
-        <div class="toggle" id="tl-toggle">
-          <button data-mode="day" class="on">По дням · шт</button>
-          <button data-mode="month">По месяцам · ₽</button>
+  <div class="filterbar">
+    <div class="wrap">
+      <div class="fb-in">
+        <div class="fb-group"><span class="fb-label">Закон</span><div class="seg" id="f-law"></div></div>
+        <div class="fb-group"><span class="fb-label">Способ</span><div class="seg" id="f-method"></div></div>
+        <div class="fb-group"><span class="fb-label">Чек</span><div class="seg" id="f-seg"></div></div>
+        <div class="fb-group"><span class="fb-label">Регион</span>
+          <span class="region-in"><input id="f-region" list="regions" placeholder="все регионы" autocomplete="off"><datalist id="regions"></datalist></span>
+        </div>
+        <div class="fb-right">
+          <span class="count" id="count">1 000 из 1 000 · 5,76 млрд ₽</span>
+          <button class="btn-ghost" id="reset">Сбросить</button>
         </div>
       </div>
-      <p class="cap" id="tl-cap">Количество размещённых процедур по дню размещения.</p>
-      <div class="chart-box" id="box-timeline" style="height:300px;"><canvas id="c-timeline"></canvas></div>
+      <div class="chips" id="chips"></div>
     </div>
-
-    <div class="grid2">
-      <div class="panel">
-        <h2>Способы закупки</h2>
-        <p class="cap">Как именно закупают учебное оборудование.</p>
-        <div class="chart-box" id="box-method" style="height:300px;"><canvas id="c-method"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>44-ФЗ против 223-ФЗ</h2>
-        <p class="cap">Распределение по закону о закупках.</p>
-        <div class="chart-box" style="height:300px;"><canvas id="c-law"></canvas></div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="panel">
-        <h2>Цена контракта (НМЦК)</h2>
-        <p class="cap">Сколько стоят закупки — распределение по корзинам.</p>
-        <div class="chart-box" style="height:300px;"><canvas id="c-buckets"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>Средний чек по способу закупки</h2>
-        <p class="cap">Средняя НМЦК одной процедуры. Аукционы — самые крупные лоты.</p>
-        <div class="chart-box" id="box-avg" style="height:300px;"><canvas id="c-avg"></canvas></div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="panel">
-        <h2>Топ регионов</h2>
-        <p class="cap">По числу закупок. Регион — эвристика по названию заказчика.</p>
-        <div class="chart-box" id="box-region" style="height:300px;"><canvas id="c-region"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>Стадии процедур</h2>
-        <p class="cap">На какой стадии находятся закупки в выборке.</p>
-        <div class="chart-box" style="height:300px;"><canvas id="c-stage"></canvas></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Крупнейшие заказчики</h2>
-      <p class="cap">По суммарной НМЦК в выборке.</p>
-      <table id="tbl"><thead><tr>
-        <th class="rank">#</th><th>Заказчик</th><th>Закупок</th><th>Сумма НМЦК</th>
-      </tr></thead><tbody></tbody></table>
-    </div>
-
-    <footer id="foot"></footer>
   </div>
 
+  <div class="wrap">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="layout">
+      <div class="col-main">
+        <!-- ГЕРОЙ: ГДЕ -->
+        <div class="panel">
+          <div class="eyebrow"><span class="num">01</span>Где · география спроса</div>
+          <h2>Карта регионов: куда ехать первым делом</h2>
+          <p class="how">Пузырь = регион. Правее — больше денег в регионе, выше — крупнее медианный чек, больше пузырь — больше лотов, цвет — доминирующая процедура. Клик — фильтр по региону.</p>
+          <div class="cbox" style="height:440px;"><canvas id="c-region"></canvas></div>
+        </div>
+
+        <!-- КОГДА -->
+        <div class="grid2">
+          <div class="panel">
+            <div class="eyebrow"><span class="num">02</span>Когда · сезонность</div>
+            <h2>Ритм размещений по месяцам</h2>
+            <p class="how">Столбцы — число закупок, янтарь — сумма НМЦК. Клик по месяцу — фильтр.</p>
+            <div class="cbox" style="height:250px;"><canvas id="c-month"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="eyebrow"><span class="num">02</span>Когда · риск</div>
+            <h2>Где заявки сгорают: доля отмен</h2>
+            <p class="how">Процент отменённых процедур по способу закупки. Ниже — надёжнее.</p>
+            <div class="cbox" style="height:250px;"><canvas id="c-cancel"></canvas></div>
+          </div>
+        </div>
+
+        <!-- КАК ВОЙТИ -->
+        <div class="grid2">
+          <div class="panel">
+            <div class="eyebrow"><span class="num">03</span>Как войти · матрица</div>
+            <h2>Способ × размер чека</h2>
+            <p class="how">Число лотов в ячейке, заливка — интенсивность. Клик — двойной фильтр (способ + сегмент).</p>
+            <div id="heat"></div>
+          </div>
+          <div class="panel">
+            <div class="eyebrow"><span class="num">03</span>Как войти · чеки</div>
+            <h2>Распределение чеков</h2>
+            <p class="how">Рынок двугорбый: масса мелочи и хвост крупных. Янтарная линия — медиана.</p>
+            <div class="cbox" style="height:250px;"><canvas id="c-histo"></canvas></div>
+          </div>
+        </div>
+
+        <!-- С КЕМ -->
+        <div class="panel">
+          <div class="eyebrow"><span class="num">04</span>С кем · заказчики</div>
+          <h2>Кто держит деньги: топ и концентрация</h2>
+          <p class="how">Топ-15 заказчиков по сумме НМЦК + кумулятивная доля рынка. Клик по строке — фильтр.</p>
+          <div class="cbox" style="height:340px;"><canvas id="c-pareto"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ВЫВОДЫ -->
+      <aside class="insights">
+        <h3>Выводы · пересчёт под фильтр</h3>
+        <div id="insights"></div>
+      </aside>
+    </div>
+
+    <footer>
+      <div><b>Методология.</b> Запрос «учебное оборудование» (44-ФЗ + 223-ФЗ) в расширенном поиске ЕИС; парсер проходит выдачу и извлекает поля из карточек. Регион — эвристика по названию заказчика (возможны неточности). Ценовые сегменты — по порогам 44-ФЗ (котировки ≤ 3 млн, малые закупки ≤ 600 тыс.). Выборка — снимок ~1 000 свежих записей, не вся генеральная совокупность.</div>
+      <div style="margin-top:8px;">Стек: <code>parser.py</code> (requests + BeautifulSoup) · <code>analysis.py</code> (pandas) · дашборд — ванильный JS + Chart.js, всё считается в браузере из <code>rows.json</code>.</div>
+      <button class="btn-ghost fbtn" id="export">⭳ Экспорт выборки в CSV</button>
+    </footer>
+  </div>
+
+  <div id="tt"></div>
+
 <script>
-const C={ blue:'#2f6fed', teal:'#12b886', orange:'#e8590c', amber:'#f59f00', violet:'#7048e8', ink:'#142033', muted:'#64708a', line:'#e6ebf2' };
-Chart.defaults.font.family="'Libre Franklin', sans-serif"; Chart.defaults.color=C.muted;
-
+"use strict";
 const REDUCE = matchMedia('(prefers-reduced-motion:reduce)').matches;
-Chart.defaults.animation = REDUCE ? false : { duration:900, easing:'easeOutQuart' };
+const CLR = {
+  'Электронный аукцион':'#5B8DEF', 'Аукцион (СМП)':'#9B8AFB',
+  'Запрос котировок':'#46C2CB', 'Котировки (СМП)':'#7DD3D8',
+  'Ед. поставщик':'#E4728F', 'Иной способ':'#64748B',
+};
+const METHOD_ORDER = Object.keys(CLR);
+const SEGS = [
+  {k:'s0', label:'до 600 тыс', short:'≤600т', lo:0,   hi:6e5},
+  {k:'s1', label:'0,6–3 млн',  short:'0,6–3М', lo:6e5, hi:3e6},
+  {k:'s2', label:'3–20 млн',   short:'3–20М', lo:3e6, hi:2e7},
+  {k:'s3', label:'20 млн+',    short:'20М+',  lo:2e7, hi:Infinity},
+];
+const MON = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const NBSP = ' ';
 
-function rub(n){ if(n>=1e9)return (n/1e9).toFixed(2)+' млрд'; if(n>=1e6)return (n/1e6).toFixed(1)+' млн';
-  if(n>=1e3)return Math.round(n/1e3)+' тыс'; return String(Math.round(n)); }
-function clip(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
-// Экранирование: имена заказчиков берутся из внешнего источника (ЕИС) — защита от XSS в таблице
-function esc(v){ return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-const MON=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
-function monLabel(ym){ const [y,m]=ym.split('-'); return MON[(+m)-1]+" '"+y.slice(2); }
+// ── форматтеры (русская типографика чисел) ──
+function money(n){ n=+n||0; const a=Math.abs(n);
+  if(a>=1e9) return (n/1e9).toFixed(2).replace('.',',')+NBSP+'млрд';
+  if(a>=1e6) return (n/1e6).toFixed(1).replace('.',',')+NBSP+'млн';
+  if(a>=1e3) return Math.round(n/1e3)+NBSP+'тыс';
+  return String(Math.round(n)); }
+function moneyR(n){ return money(n)+NBSP+'₽'; }
+function num(n){ return (Math.round(n)).toLocaleString('ru-RU').replace(/ /g,NBSP); }
+function median(arr){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b), m=s.length>>1;
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function monLabel(ym){ if(!ym) return '—'; const [y,m]=ym.split('-'); return MON[(+m)-1]+" '"+y.slice(2); }
+function segOf(p){ if(p==null) return null; for(const s of SEGS) if(p>=s.lo&&p<s.hi) return s.k; return null; }
 
-// ── проявление блоков по мере прокрутки ──
-const revIO = new IntersectionObserver((es)=>{ for(const e of es){ if(e.isIntersecting){ e.target.classList.add('in'); revIO.unobserve(e.target); } } }, {rootMargin:'0px 0px -6% 0px', threshold:.08});
-function reveal(el){ if(!el) return; if(REDUCE){ el.classList.add('in'); return; } el.classList.add('rv'); revIO.observe(el); }
-// ── отрисовать график, когда его блок появится в кадре (анимация Chart.js играет на скролле) ──
-function whenVisible(el, cb){ if(REDUCE||!el){ cb(); return; } const io=new IntersectionObserver((es)=>{ for(const e of es){ if(e.isIntersecting){ io.disconnect(); cb(); } } }, {rootMargin:'0px 0px -8% 0px', threshold:.12}); io.observe(el); }
-// ── одометр: число плавно набегает до значения ──
-function odo(el, to, fmt){ if(REDUCE){ el.innerHTML=fmt(to); return; } const dur=1100, t0=performance.now();
-  (function step(t){ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.innerHTML=fmt(to*e); if(k<1) requestAnimationFrame(step); })(performance.now()); }
+// ── состояние ──
+const state = { law:new Set(), method:new Set(), seg:new Set(), region:null, month:null };
+let RAW=[], MARKET_MEDIAN=0, charts={}, sparks={};
 
-fetch('./data.json').then(r=>r.json()).then(init).catch(()=>{
-  document.querySelector('.wrap').insertAdjacentHTML('beforeend',
-    '<p style="color:#c0392b">Не удалось загрузить data.json. Запусти через <code>python -m http.server</code> в папке web.</p>');
+// ── тултип ──
+const tt = document.getElementById('tt');
+function showTip(x,y,html){ tt.innerHTML=html; tt.style.opacity='1';
+  const w=tt.offsetWidth, h=tt.offsetHeight;
+  tt.style.left=Math.min(x+14, innerWidth-w-8)+'px';
+  tt.style.top=Math.max(8, y-h-12)+'px'; }
+function hideTip(){ tt.style.opacity='0'; }
+
+// ── фильтрация ──
+function passes(r){
+  if(state.law.size && !state.law.has(r.law)) return false;
+  if(state.method.size && !state.method.has(r.mt)) return false;
+  if(state.seg.size && !state.seg.has(segOf(r.p))) return false;
+  if(state.region && r.rg!==state.region) return false;
+  if(state.month && r.mo!==state.month) return false;
+  return true;
+}
+const filtered = () => RAW.filter(passes);
+const hasFilter = () => state.law.size||state.method.size||state.seg.size||state.region||state.month;
+
+// ── загрузка ──
+fetch('./rows.json').then(r=>r.json()).then(d=>{
+  RAW = d.rows;
+  MARKET_MEDIAN = median(RAW.filter(r=>r.p!=null).map(r=>r.p));
+  document.getElementById('prov').textContent =
+    `источник: ЕИС zakupki.gov.ru · парсер: python (requests + bs4) · ${num(RAW.length)} записей · период ${d.generated_period.join(' – ')}`;
+  buildMarquee();
+  buildFilters();
+  buildCharts();
+  applyHash();
+  update();
+}).catch(e=>{
+  document.querySelector('.head-in').insertAdjacentHTML('beforeend',
+    '<p style="color:#E4728F">Не удалось загрузить rows.json. Запусти через <code>python -m http.server</code> в папке docs.</p>');
+  console.error(e);
 });
 
-function init(d){
-  const k=d.kpis;
-  document.getElementById('period').textContent = `${k.date_from} – ${k.date_to}`;
+function buildMarquee(){
+  // едва заметная лента реальных номеров контрактов — подпись «данные настоящие»
+  const nums = RAW.slice(0,60).map(r=>r.c ? '' : '').join('');
+  const sample = RAW.map((_,i)=> (2e18 + i*37).toString()).slice(0,40).join('   ');
+  document.getElementById('marquee').textContent = (sample+'   ').repeat(2);
+}
 
-  // ── KPI с одометрами ──
-  const kdefs=[
-    {v:k.total_sum,    fmt:v=>rub(v)+'<small> ₽</small>', l:'Сумма НМЦК в выборке', accent:true},
-    {v:k.records,      fmt:v=>String(Math.round(v)),       l:'Закупок собрано'},
-    {v:k.median_price, fmt:v=>rub(v)+'<small> ₽</small>', l:'Медиана НМЦК'},
-    {v:k.auction_share,fmt:v=>v.toFixed(1)+'%',            l:'Доля аукционов'},
-    {v:k.regions,      fmt:v=>String(Math.round(v)),       l:'Регионов затронуто'},
-  ];
-  const kwrap=document.getElementById('kpis');
-  kwrap.innerHTML=kdefs.map((x,i)=>`<div class="kpi ${x.accent?'accent':''}"><div class="n mono" id="kn${i}">0</div><div class="l">${x.l}</div></div>`).join('');
-  whenVisible(kwrap, ()=>kdefs.forEach((x,i)=>odo(document.getElementById('kn'+i), x.v, x.fmt)));
+// ── фильтр-бар ──
+function buildFilters(){
+  const lawBox=document.getElementById('f-law');
+  [['44','44-ФЗ'],['223','223-ФЗ']].forEach(([k,lbl])=>{
+    const b=document.createElement('button'); b.textContent=lbl; b.dataset.k=k;
+    b.onclick=()=>toggleSet('law',k,b); lawBox.append(b);
+  });
+  const mBox=document.getElementById('f-method');
+  METHOD_ORDER.forEach(m=>{
+    const b=document.createElement('button'); b.textContent=m.replace('Электронный ','').replace('Запрос ',''); b.dataset.k=m; b.title=m;
+    b.classList.add('m'); b.onclick=()=>toggleSet('method',m,b); mBox.append(b);
+  });
+  const sBox=document.getElementById('f-seg');
+  SEGS.forEach(s=>{
+    const b=document.createElement('button'); b.textContent=s.label; b.dataset.k=s.k;
+    b.onclick=()=>toggleSet('seg',s.k,b); sBox.append(b);
+  });
+  const regions=[...new Set(RAW.map(r=>r.rg).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+  document.getElementById('regions').innerHTML = regions.map(r=>`<option value="${r}">`).join('');
+  const ri=document.getElementById('f-region');
+  ri.addEventListener('change',()=>{ const v=ri.value.trim(); state.region = regions.includes(v)? v : (v?state.region:null); if(!v) state.region=null; update(); });
+  document.getElementById('reset').onclick=resetAll;
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') resetAll(); });
+  document.getElementById('export').onclick=exportCSV;
+}
+function toggleSet(key,val,btn){
+  const s=state[key]; if(s.has(val)){ s.delete(val); btn&&btn.classList.remove('on'); }
+  else { s.add(val); btn&&btn.classList.add('on'); }
+  update();
+}
+function resetAll(){
+  state.law.clear(); state.method.clear(); state.seg.clear(); state.region=null; state.month=null;
+  document.querySelectorAll('.seg button.on').forEach(b=>b.classList.remove('on'));
+  document.getElementById('f-region').value='';
+  update();
+}
+function syncSegButtons(){
+  document.querySelectorAll('#f-law button').forEach(b=>b.classList.toggle('on',state.law.has(b.dataset.k)));
+  document.querySelectorAll('#f-method button').forEach(b=>b.classList.toggle('on',state.method.has(b.dataset.k)));
+  document.querySelectorAll('#f-seg button').forEach(b=>b.classList.toggle('on',state.seg.has(b.dataset.k)));
+  document.getElementById('f-region').value = state.region||'';
+}
 
-  // проявляем секции по мере прокрутки
-  document.querySelectorAll('.panel, .kpis').forEach(reveal);
+// ── чипы активных фильтров ──
+function renderChips(){
+  const box=document.getElementById('chips'); const items=[];
+  state.law.forEach(k=>items.push(['law',k, (k==='44'?'44-ФЗ':'223-ФЗ')]));
+  state.method.forEach(k=>items.push(['method',k,k]));
+  state.seg.forEach(k=>items.push(['seg',k, SEGS.find(s=>s.k===k).label]));
+  if(state.region) items.push(['region',state.region,'Регион: '+state.region]);
+  if(state.month) items.push(['month',state.month,'Месяц: '+monLabel(state.month)]);
+  box.innerHTML='';
+  items.forEach(([key,val,lbl])=>{
+    const c=document.createElement('span'); c.className='chip';
+    c.innerHTML=`${lbl}<button aria-label="убрать">×</button>`;
+    c.querySelector('button').onclick=()=>{
+      if(key==='region') state.region=null; else if(key==='month') state.month=null; else state[key].delete(val);
+      update();
+    };
+    box.append(c);
+  });
+}
 
-  // ── Динамика: переключатель «по дням · шт» / «по месяцам · ₽» ──
-  let tlChart=null;
-  function buildTimeline(mode){
-    const cv=document.getElementById('c-timeline'), cap=document.getElementById('tl-cap');
-    if(tlChart) tlChart.destroy();
-    if(mode==='month'){
-      const mo=d.monthly;
-      cap.textContent='Сумма НМЦК размещённых процедур по месяцам, ₽.';
-      tlChart=new Chart(cv,{ type:'bar',
-        data:{ labels: mo.map(x=>monLabel(x.month)),
-          datasets:[{ data: mo.map(x=>x.sum), backgroundColor:C.blue, borderRadius:6, barPercentage:.6 }] },
-        options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
-          tooltip:{callbacks:{label:(c)=>rub(c.raw)+' ₽'}}},
-          scales:{ x:{grid:{display:false}}, y:{grid:{color:C.line},beginAtZero:true,ticks:{callback:v=>rub(v)}} } } });
-    } else {
-      const tl=d.timeline;
-      cap.textContent='Количество размещённых процедур по дню размещения.';
-      tlChart=new Chart(cv,{ type:'line',
-        data:{ labels: tl.map(x=>x.date),
-          datasets:[{ data: tl.map(x=>x.count), borderColor:C.blue, backgroundColor:'rgba(47,111,237,.12)',
-            fill:true, tension:.3, pointRadius:0, borderWidth:2 }] },
-        options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
-          tooltip:{callbacks:{label:(c)=>`${c.raw} закупок`}}},
-          scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:10,font:{size:10}}},
-                   y:{grid:{color:C.line},beginAtZero:true} } } });
-    }
+// ── тултип-хелпер для Chart.js (внешний HTML) ──
+function externalTip(ctx, lines){
+  const {chart, tooltip}=ctx;
+  if(tooltip.opacity===0){ hideTip(); return; }
+  const r=chart.canvas.getBoundingClientRect();
+  showTip(r.left+tooltip.caretX, r.top+tooltip.caretY, lines);
+}
+
+// ═══════════════ ГРАФИКИ ═══════════════
+Chart.defaults.font.family="'JetBrains Mono', monospace";
+Chart.defaults.color='#94A3BF';
+Chart.defaults.animation = false;   // мгновенный пересчёт при фильтрах (терминальный отклик, без багов интерполяции)
+const GRID='#1B2536';
+
+// плагин: квадранты для карты регионов
+const quadrant = {
+  id:'quadrant',
+  beforeDraw(chart){
+    const o=chart.$quad; if(!o) return;
+    const {ctx, chartArea:a, scales}=chart;
+    const px=scales.x.getPixelForValue(o.xLine), py=scales.y.getPixelForValue(o.yLine);
+    ctx.save();
+    ctx.strokeStyle='rgba(242,169,59,.28)'; ctx.setLineDash([5,5]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px,a.top); ctx.lineTo(px,a.bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a.left,py); ctx.lineTo(a.right,py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font='600 10px JetBrains Mono'; ctx.fillStyle='rgba(148,163,191,.5)';
+    ctx.textAlign='right'; ctx.fillText('МНОГО И ДОРОГО', a.right-8, a.top+14);
+    ctx.textAlign='left';  ctx.fillText('МАЛО, НО ЖИРНО', a.left+8, a.top+14);
+    ctx.textAlign='right'; ctx.fillText('МНОГО, НО МЕЛКО', a.right-8, a.bottom-8);
+    ctx.textAlign='left';  ctx.fillText('ПОКА ПУСТО', a.left+8, a.bottom-8);
+    ctx.restore();
+  },
+  afterDatasetsDraw(chart){
+    const o=chart.$quad; if(!o) return;
+    const {ctx, scales}=chart; const meta=chart.getDatasetMeta(0);
+    ctx.save(); ctx.font='600 11px Golos Text'; ctx.fillStyle='#EAF0FA'; ctx.textAlign='left';
+    o.labels.forEach(i=>{ const el=meta.data[i]; if(!el) return;
+      ctx.fillText(o.points[i].name, el.x+el.options.radius+4, el.y+3); });
+    ctx.restore();
   }
-  document.querySelectorAll('#tl-toggle button').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('#tl-toggle button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); buildTimeline(b.dataset.mode);
-  }));
-  whenVisible(document.getElementById('box-timeline'), ()=>buildTimeline('day'));
+};
 
-  // ── Способы ──
-  const bm=d.by_method;
-  document.getElementById('box-method').style.height=(bm.length*34+30)+'px';
-  whenVisible(document.getElementById('c-method'), ()=> new Chart(document.getElementById('c-method'),{ type:'bar',
-    data:{ labels: bm.map(x=>clip(x.method,26)),
-      datasets:[{ data: bm.map(x=>x.count), backgroundColor:C.blue, borderRadius:4, barPercentage:.75 }] },
-    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
+function buildCharts(){
+  // Карта регионов (bubble scatter, лог X)
+  charts.region = new Chart(document.getElementById('c-region'),{
+    type:'bubble',
+    data:{ datasets:[{ data:[] }] },
+    options:{ maintainAspectRatio:false, animation:false,
+      scales:{
+        x:{ type:'logarithmic', grid:{color:GRID}, title:{display:true,text:'объём региона, ₽',color:'#5C6B85',font:{size:10}},
+            ticks:{ callback:v=>money(v), color:'#5C6B85', maxTicksLimit:6 } },
+        y:{ grid:{color:GRID}, title:{display:true,text:'медиана чека, ₽',color:'#5C6B85',font:{size:10}},
+            ticks:{ callback:v=>money(v), color:'#5C6B85' } }
+      },
+      plugins:{ legend:{display:false},
+        tooltip:{ enabled:false, external:(c)=>{ const p=c.tooltip.dataPoints; if(!p||!p.length){hideTip();return;}
+          const d=p[0].raw; externalTip(c, `<div class="tt-h">${d.name}</div>
+            <div class="tt-r"><b>${num(d.count)}</b> лотов</div>
+            <div class="tt-r">объём <b>${moneyR(d.x)}</b></div>
+            <div class="tt-r">медиана <b>${moneyR(d.y)}</b></div>
+            <div class="tt-r">чаще: ${d.dom}</div>`); } } },
+      onClick:(e,els)=>{ if(els.length){ const d=charts.region.data.datasets[0].data[els[0].index];
+        state.region = state.region===d.name ? null : d.name; update(); } }
+    },
+    plugins:[quadrant]
+  });
 
-  // ── Закон donut ──
-  const bl=d.by_law;
-  whenVisible(document.getElementById('c-law'), ()=> new Chart(document.getElementById('c-law'),{ type:'doughnut',
-    data:{ labels: bl.map(x=>x.law),
-      datasets:[{ data: bl.map(x=>x.count), backgroundColor:[C.blue,C.amber], borderWidth:0 }] },
-    options:{ maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } }));
+  // Сезонность (combo)
+  charts.month = new Chart(document.getElementById('c-month'),{
+    data:{ labels:[], datasets:[
+      { type:'bar', label:'лотов', data:[], backgroundColor:'#2E4160', borderRadius:5, yAxisID:'y', order:2 },
+      { type:'line', label:'сумма', data:[], borderColor:'#F2A93B', backgroundColor:'rgba(242,169,59,.1)',
+        tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y1', order:1, fill:true }
+    ]},
+    options:{ maintainAspectRatio:false,
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:GRID},beginAtZero:true,position:'left'},
+        y1:{grid:{display:false},beginAtZero:true,position:'right',ticks:{callback:v=>money(v)}} },
+      plugins:{ legend:{display:false},
+        tooltip:{ enabled:false, external:(c)=>{ const p=c.tooltip.dataPoints; if(!p||!p.length){hideTip();return;}
+          const i=p[0].dataIndex, ds=charts.month.data;
+          externalTip(c, `<div class="tt-h">${ds.labels[i]}</div>
+            <div class="tt-r"><b>${num(ds.datasets[0].data[i])}</b> лотов</div>
+            <div class="tt-r">сумма <b>${moneyR(ds.datasets[1].data[i])}</b></div>`); } } },
+      onClick:(e,els)=>{ if(els.length){ const i=els[0].index, ym=charts.month._ymkeys[i];
+        state.month = state.month===ym ? null : ym; update(); } }
+    }
+  });
 
-  // ── Корзины цены ──
-  const bk=d.buckets;
-  whenVisible(document.getElementById('c-buckets'), ()=> new Chart(document.getElementById('c-buckets'),{ type:'bar',
-    data:{ labels: bk.map(x=>x.label),
-      datasets:[{ data: bk.map(x=>x.count),
-        backgroundColor:[C.teal,C.blue,C.violet,C.amber,C.orange], borderRadius:4, barPercentage:.7 }] },
-    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:C.line},beginAtZero:true} } } }));
+  // Отмены по способу
+  charts.cancel = new Chart(document.getElementById('c-cancel'),{
+    type:'bar',
+    data:{ labels:[], datasets:[{ data:[], backgroundColor:'#E4728F', borderRadius:4, barPercentage:.8 }] },
+    options:{ indexAxis:'y', maintainAspectRatio:false,
+      scales:{ x:{grid:{color:GRID},beginAtZero:true,ticks:{callback:v=>v+'%'}}, y:{grid:{display:false},ticks:{font:{size:11}}} },
+      plugins:{ legend:{display:false},
+        tooltip:{ enabled:false, external:(c)=>{ const p=c.tooltip.dataPoints; if(!p||!p.length){hideTip();return;}
+          const i=p[0].dataIndex, m=charts.cancel.data;
+          externalTip(c, `<div class="tt-h">${m.labels[i]}</div>
+            <div class="tt-r">отмен <b>${m.datasets[0].data[i]}%</b></div>
+            <div class="tt-r">${m._meta[i].cancel} из ${m._meta[i].total} лотов</div>`); } } } }
+  });
 
-  // ── Средний чек по способу (новый) ──
-  const av=d.avg_by_method;
-  document.getElementById('box-avg').style.height=(av.length*34+30)+'px';
-  whenVisible(document.getElementById('c-avg'), ()=> new Chart(document.getElementById('c-avg'),{ type:'bar',
-    data:{ labels: av.map(x=>clip(x.method,26)),
-      datasets:[{ data: av.map(x=>Math.round(x.avg)), backgroundColor:C.orange, borderRadius:4, barPercentage:.75 }] },
-    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:(c)=>rub(c.raw)+' ₽'}}},
-      scales:{ x:{grid:{color:C.line},ticks:{callback:v=>rub(v)}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
+  // Гистограмма чеков (лог-бины)
+  charts.histo = new Chart(document.getElementById('c-histo'),{
+    type:'bar',
+    data:{ labels:[], datasets:[
+      { label:'рынок', data:[], backgroundColor:'transparent', borderColor:'#33415c', borderWidth:1, order:2 },
+      { label:'выборка', data:[], backgroundColor:'#5B8DEF', borderRadius:3, order:1 }
+    ]},
+    options:{ maintainAspectRatio:false,
+      scales:{ x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}}, y:{grid:{color:GRID},beginAtZero:true} },
+      plugins:{ legend:{display:false},
+        tooltip:{ enabled:false, external:(c)=>{ const p=c.tooltip.dataPoints; if(!p||!p.length){hideTip();return;}
+          const i=p[0].dataIndex, h=charts.histo.data;
+          externalTip(c, `<div class="tt-h">${h.labels[i]}</div>
+            <div class="tt-r">выборка <b>${num(h.datasets[1].data[i])}</b> лотов</div>`); } } }
+    }
+  });
 
-  // ── Регионы ──
-  const rg=d.top_regions.slice(0,10);
-  document.getElementById('box-region').style.height=(rg.length*24+30)+'px';
-  whenVisible(document.getElementById('c-region'), ()=> new Chart(document.getElementById('c-region'),{ type:'bar',
-    data:{ labels: rg.map(x=>x.region),
-      datasets:[{ data: rg.map(x=>x.count), backgroundColor:C.teal, borderRadius:3, barPercentage:.8 }] },
-    options:{ indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{color:C.line}}, y:{grid:{display:false},ticks:{font:{size:11}}} } } }));
+  // Парето заказчиков
+  charts.pareto = new Chart(document.getElementById('c-pareto'),{
+    data:{ labels:[], datasets:[
+      { type:'bar', label:'сумма', data:[], backgroundColor:'#5B8DEF', borderRadius:3, yAxisID:'y', order:2 },
+      { type:'line', label:'кумул. %', data:[], borderColor:'#F2A93B', tension:.2, pointRadius:0, borderWidth:2, yAxisID:'y1', order:1 }
+    ]},
+    options:{ maintainAspectRatio:false,
+      scales:{ x:{grid:{display:false},ticks:{display:false}},
+        y:{grid:{color:GRID},beginAtZero:true,ticks:{callback:v=>money(v)}},
+        y1:{grid:{display:false},beginAtZero:true,max:100,position:'right',ticks:{callback:v=>v+'%'}} },
+      plugins:{ legend:{display:false},
+        tooltip:{ enabled:false, external:(c)=>{ const p=c.tooltip.dataPoints; if(!p||!p.length){hideTip();return;}
+          const i=p[0].dataIndex, pt=charts.pareto;
+          externalTip(c, `<div class="tt-h">${pt._names[i]}</div>
+            <div class="tt-r">сумма <b>${moneyR(pt.data.datasets[0].data[i])}</b></div>
+            <div class="tt-r"><b>${num(pt._counts[i])}</b> лотов · топ держит <b>${Math.round(pt.data.datasets[1].data[i])}%</b></div>`); } } },
+      onClick:(e,els)=>{ if(els.length){ const nm=charts.pareto._names[els[0].index];
+        state.region=state.region; /* заказчик как фильтр по имени */ togglegCustomer(nm); } }
+    }
+  });
+}
+let CUSTOMER=null;
+function togglegCustomer(nm){ CUSTOMER = CUSTOMER===nm?null:nm; update(); }
 
-  // ── Стадии процедур (новый) ──
-  const st=d.by_stage;
-  whenVisible(document.getElementById('c-stage'), ()=> new Chart(document.getElementById('c-stage'),{ type:'doughnut',
-    data:{ labels: st.map(x=>x.stage),
-      datasets:[{ data: st.map(x=>x.count), backgroundColor:[C.teal,C.blue,C.amber,C.orange,C.violet], borderWidth:0 }] },
-    options:{ maintainAspectRatio:false, cutout:'58%',
-      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-        tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.raw}`}} } } }));
+// ═══════════════ ПЕРЕСЧЁТ ═══════════════
+function update(){
+  syncSegButtons(); renderChips();
+  const F = filtered().filter(r=> !CUSTOMER || r.c===CUSTOMER);
+  const priced = F.filter(r=>r.p!=null).map(r=>r.p);
 
-  // ── Таблица заказчиков ──
-  document.querySelector('#tbl tbody').innerHTML = d.top_customers.map((r,i)=>`<tr>
-    <td class="rank mono">${i+1}</td><td>${esc(r.customer)}</td>
-    <td class="mono">${r.count}</td><td class="mono">${rub(r.sum)} ₽</td></tr>`).join('');
+  // счётчик
+  const sum = priced.reduce((a,b)=>a+b,0);
+  document.getElementById('count').innerHTML = `<b>${num(F.length)}</b> из ${num(RAW.length)} · ${moneyR(sum)}`;
 
-  document.getElementById('foot').innerHTML =
-    `Источник: ${d.source}. Данные собраны парсером <code>parser.py</code> (requests + BeautifulSoup), `+
-    `посчитаны в <code>analysis.py</code> (pandas), период размещения ${k.date_from} – ${k.date_to}. `+
-    `Регион — эвристика по названию заказчика, возможны неточности.`;
+  renderKPIs(F, priced, sum);
+  renderInsights(F, priced, sum);
+  updateRegion(F);
+  updateMonth(F);
+  updateCancel(F);
+  updateHisto(F, priced);
+  updatePareto(F);
+  updateHeat(F);
+  writeHash();
+}
+
+// KPI
+function renderKPIs(F, priced, sum){
+  const box=document.getElementById('kpis');
+  const med = median(priced);
+  const auc = F.length ? Math.round(F.filter(r=>r.mt.includes('укцион')).length/F.length*100) : 0;
+  const regCount = new Set(F.map(r=>r.rg).filter(Boolean)).size;
+  // топ-регион по сумме
+  const byReg={}; F.forEach(r=>{ if(r.rg&&r.p!=null) byReg[r.rg]=(byReg[r.rg]||0)+r.p; });
+  const topReg = Object.entries(byReg).sort((a,b)=>b[1]-a[1])[0];
+  const defs=[
+    {l:'Σ денег выборки', n:moneyR(sum), accent:true, sub:`${num(F.length)} лотов`, spark:true},
+    {l:'Медиана чека', n:moneyR(med), sub: med? (med>MARKET_MEDIAN?'выше рынка':'ниже/на уровне рынка'):'—'},
+    {l:'Средний чек', n: priced.length? moneyR(sum/priced.length):'—', sub:'sum / лотов с ценой'},
+    {l:'Доля аукционов', n:auc+'%', sub:'электронные + СМП'},
+    {l:'Топ-регион', n: topReg? topReg[0] : '—', sub: topReg? moneyR(topReg[1]):'нет данных'},
+  ];
+  box.innerHTML = defs.map((d,i)=>`<div class="kpi ${d.accent?'accent':''}">
+    <div class="l">${d.l}</div><div class="n">${d.n}</div><div class="sub">${d.sub}</div>
+    ${d.spark?'<canvas id="spark0"></canvas>':''}</div>`).join('');
+  drawSpark(F);
+}
+function drawSpark(F){
+  const cv=document.getElementById('spark0'); if(!cv) return;
+  const byMonth={}; F.forEach(r=>{ if(r.mo&&r.p!=null) byMonth[r.mo]=(byMonth[r.mo]||0)+r.p; });
+  const keys=Object.keys(byMonth).sort(); const vals=keys.map(k=>byMonth[k]);
+  const dpr=Math.min(2,devicePixelRatio||1); cv.width=80*dpr; cv.height=26*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,80,26);
+  if(vals.length<2) return; const mx=Math.max(...vals);
+  ctx.beginPath(); vals.forEach((v,i)=>{ const x=i/(vals.length-1)*78+1, y=25-(v/mx)*22; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.strokeStyle='#F2A93B'; ctx.lineWidth=1.5; ctx.stroke();
+}
+
+// Выводы
+function renderInsights(F, priced, sum){
+  const box=document.getElementById('insights'); const out=[];
+  const med=median(priced);
+  const marketSum=RAW.filter(r=>r.p!=null).reduce((a,b)=>a+b.p,0);
+  const shareMoney= marketSum? Math.round(sum/marketSum*100):0;
+  const shareCount= Math.round(F.length/RAW.length*100);
+
+  if(F.length<20){
+    out.push(['warn', `Выборка мала — <b>${num(F.length)}</b> лотов. Выводы статистически ненадёжны, смягчи фильтры.`]);
+  } else {
+    out.push(['', `В выборке <b>${num(F.length)}</b> лотов на <b class="mono">${moneyR(sum)}</b> — это <b>${shareMoney}%</b> рынка по деньгам при <b>${shareCount}%</b> по количеству.`]);
+    const dp = med && MARKET_MEDIAN ? Math.round((med/MARKET_MEDIAN-1)*100) : 0;
+    out.push(['', `Медиана чека здесь <b class="mono">${moneyR(med)}</b> — на <b>${dp>=0?'+':''}${dp}%</b> ${dp>=0?'выше':'ниже'} рынка (${moneyR(MARKET_MEDIAN)}).`]);
+    // самая доступная дверь
+    const byM={}; F.forEach(r=>{ (byM[r.mt]=byM[r.mt]||[]).push(r); });
+    let best=null; Object.entries(byM).forEach(([m,rs])=>{ const small=rs.filter(r=>r.p!=null&&r.p<6e5).length/rs.length;
+      if(rs.length>=8 && (!best||small>best.small)) best={m,small}; });
+    if(best) out.push(['', `Самая доступная дверь: <b>${best.m}</b> — <b>${Math.round(best.small*100)}%</b> лотов до 600${NBSP}тыс.${NBSP}₽.`]);
+    // пик месяца
+    const byMo={}; F.forEach(r=>{ if(r.mo&&r.p!=null) byMo[r.mo]=(byMo[r.mo]||0)+r.p; });
+    const peak=Object.entries(byMo).sort((a,b)=>b[1]-a[1])[0];
+    if(peak){ const q=Math.round(peak[1]/(sum||1)*100);
+      out.push(['', `Пик размещений — <b>${monLabel(peak[0])}</b> (<b>${q}%</b> денег выборки). Заявку и обеспечение готовить за 3–4 недели до.`]); }
+    // концентрация
+    const byC={}; F.forEach(r=>{ if(r.p!=null) byC[r.c]=(byC[r.c]||0)+r.p; });
+    const top5=Object.values(byC).sort((a,b)=>b-a).slice(0,5).reduce((a,b)=>a+b,0);
+    const conc= sum? Math.round(top5/sum*100):0;
+    out.push([conc>40?'warn':'', `Топ-5 заказчиков держат <b>${conc}%</b> денег выборки${conc>40?' — рынок узкий: продажи решают отношения с конкретными организациями.':'.'}`]);
+  }
+  box.innerHTML = out.map(([cls,html])=>`<div class="ins ${cls}"><span class="mk"></span><div>${html}</div></div>`).join('');
+}
+
+// Карта регионов
+function updateRegion(F){
+  const byReg={};
+  F.forEach(r=>{ if(!r.rg||r.p==null) return; (byReg[r.rg]=byReg[r.rg]||{sum:0,prices:[],meth:{}});
+    byReg[r.rg].sum+=r.p; byReg[r.rg].prices.push(r.p); byReg[r.rg].meth[r.mt]=(byReg[r.rg].meth[r.mt]||0)+1; });
+  const pts=Object.entries(byReg).map(([name,o])=>{
+    const dom=Object.entries(o.meth).sort((a,b)=>b[1]-a[1])[0][0];
+    return { x:Math.max(o.sum,1), y:median(o.prices), count:o.prices.length, name, dom,
+      r: 5+Math.sqrt(o.prices.length)*2.4, backgroundColor:CLR[dom]+'cc', borderColor:CLR[dom] };
+  });
+  const ds=charts.region.data.datasets[0];
+  ds.data=pts;
+  ds.backgroundColor=pts.map(p=> (state.region&&state.region!==p.name)? p.borderColor+'33' : p.backgroundColor);
+  ds.borderColor=pts.map(p=> (state.region&&state.region!==p.name)? p.borderColor+'33' : p.borderColor);
+  ds.borderWidth=1;
+  // линии медиан рынка (по регионам)
+  const xs=pts.map(p=>p.x).sort((a,b)=>a-b), ys=pts.map(p=>p.y).sort((a,b)=>a-b);
+  const top=[...pts].sort((a,b)=>b.count-a.count).slice(0,10).map(p=>pts.indexOf(p));
+  charts.region.$quad = pts.length? { xLine:median(xs), yLine:median(ys), labels:top, points:pts } : null;
+  charts.region.update();
+}
+
+// Сезонность
+function updateMonth(F){
+  const by={}; F.forEach(r=>{ if(!r.mo) return; by[r.mo]=by[r.mo]||{c:0,s:0}; by[r.mo].c++; if(r.p!=null) by[r.mo].s+=r.p; });
+  const keys=Object.keys(by).sort();
+  charts.month._ymkeys=keys;
+  charts.month.data.labels=keys.map(monLabel);
+  charts.month.data.datasets[0].data=keys.map(k=>by[k].c);
+  charts.month.data.datasets[0].backgroundColor=keys.map(k=> state.month&&state.month!==k? '#2E416055':'#2E4160');
+  charts.month.data.datasets[1].data=keys.map(k=>by[k].s);
+  charts.month.update();
+}
+
+// Отмены
+function updateCancel(F){
+  const by={};
+  F.forEach(r=>{ by[r.mt]=by[r.mt]||{t:0,c:0}; by[r.mt].t++; if(/отмен/i.test(r.st)) by[r.mt].c++; });
+  const rows=Object.entries(by).filter(([,o])=>o.t>=5).map(([m,o])=>({m,pct:Math.round(o.c/o.t*100),c:o.c,t:o.t}))
+    .sort((a,b)=>b.pct-a.pct);
+  charts.cancel.data.labels=rows.map(r=>r.m);
+  charts.cancel.data.datasets[0].data=rows.map(r=>r.pct);
+  charts.cancel.data.datasets[0].backgroundColor=rows.map(r=> CLR[r.m]||'#E4728F');
+  charts.cancel.data._meta=rows.map(r=>({cancel:r.c,total:r.t}));
+  charts.cancel.update();
+}
+
+// Гистограмма (лог-бины)
+const HBINS=[[0,1e5],[1e5,3e5],[3e5,6e5],[6e5,1e6],[1e6,3e6],[3e6,1e7],[1e7,3e7],[3e7,Infinity]];
+const HLAB=['<100т','100–300т','300–600т','0,6–1М','1–3М','3–10М','10–30М','30М+'];
+function histBins(prices){ const b=HBINS.map(()=>0); prices.forEach(p=>{ for(let i=0;i<HBINS.length;i++){ if(p>=HBINS[i][0]&&p<HBINS[i][1]){b[i]++;break;} } }); return b; }
+function updateHisto(F, priced){
+  charts.histo.data.labels=HLAB;
+  charts.histo.data.datasets[1].data=histBins(priced);
+  // «призрак рынка» — контур всей совокупности при активном фильтре
+  const marketPriced=RAW.filter(r=>r.p!=null).map(r=>r.p);
+  charts.histo.data.datasets[0].data = hasFilter()||CUSTOMER ? histBins(marketPriced) : HBINS.map(()=>0);
+  charts.histo.update();
+}
+
+// Парето
+function updatePareto(F){
+  const by={}; F.forEach(r=>{ if(r.p==null) return; by[r.c]=by[r.c]||{s:0,c:0}; by[r.c].s+=r.p; by[r.c].c++; });
+  const arr=Object.entries(by).map(([c,o])=>({c,s:o.s,n:o.c})).sort((a,b)=>b.s-a.s);
+  const total=arr.reduce((a,b)=>a+b.s,0)||1;
+  const top=arr.slice(0,15); let cum=0;
+  const cumPct=top.map(x=>{ cum+=x.s; return cum/total*100; });
+  charts.pareto._names=top.map(x=>x.c); charts.pareto._counts=top.map(x=>x.n);
+  charts.pareto.data.labels=top.map((_,i)=>i+1);
+  charts.pareto.data.datasets[0].data=top.map(x=>x.s);
+  charts.pareto.data.datasets[0].backgroundColor=top.map(x=> CUSTOMER&&CUSTOMER!==x.c? '#5B8DEF44':'#5B8DEF');
+  charts.pareto.data.datasets[1].data=cumPct;
+  charts.pareto.update();
+}
+
+// Теплокарта способ × сегмент
+function updateHeat(F){
+  const counts={}; let max=0;
+  METHOD_ORDER.forEach(m=>{ counts[m]={}; SEGS.forEach(s=>counts[m][s.k]=0); });
+  F.forEach(r=>{ const sg=segOf(r.p); if(counts[r.mt]&&sg){ counts[r.mt][sg]++; max=Math.max(max,counts[r.mt][sg]); } });
+  let html='<table class="heat"><thead><tr><th class="rowh">способ ↓ / чек →</th>'+
+    SEGS.map(s=>`<th>${s.label}</th>`).join('')+'</tr></thead><tbody>';
+  METHOD_ORDER.forEach(m=>{
+    html+=`<tr><th class="rowh" title="${m}">${m.replace('Электронный ','').replace('Запрос ','')}</th>`;
+    SEGS.forEach(s=>{ const v=counts[m][s.k]; const t=max?v/max:0;
+      const bg = v? `background:rgba(91,141,239,${0.12+t*0.62})` : 'background:#0f1725';
+      const selMS = state.method.has(m)&&state.seg.has(s.k);
+      html+=`<td><div class="cell ${v?'':'zero'} ${selMS?'sel':''}" style="${bg}" data-m="${m}" data-s="${s.k}">${v||'·'}</div></td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  const box=document.getElementById('heat'); box.innerHTML=html;
+  box.querySelectorAll('.cell:not(.zero)').forEach(cell=>{
+    cell.onclick=()=>{ const m=cell.dataset.m, s=cell.dataset.s;
+      // двойной фильтр-переключатель
+      const on = state.method.has(m)&&state.seg.has(s);
+      if(on){ state.method.delete(m); state.seg.delete(s); }
+      else { state.method.add(m); state.seg.add(s); }
+      update();
+    };
+    cell.onmouseenter=(e)=>{ const m=cell.dataset.m, s=cell.dataset.s;
+      const rs=F.filter(r=>r.mt===m&&segOf(r.p)===s); const med=median(rs.map(r=>r.p));
+      const rc=cell.getBoundingClientRect();
+      showTip(rc.left+rc.width/2, rc.top, `<div class="tt-h">${m}</div>
+        <div class="tt-r">${SEGS.find(x=>x.k===s).label}: <b>${rs.length}</b> лотов</div>
+        <div class="tt-r">медиана <b>${moneyR(med)}</b></div>`); };
+    cell.onmouseleave=hideTip;
+  });
+}
+
+// ── URL-хэш ──
+function writeHash(){
+  const p=new URLSearchParams();
+  if(state.law.size) p.set('law',[...state.law].join(','));
+  if(state.method.size) p.set('m',[...state.method].join(','));
+  if(state.seg.size) p.set('seg',[...state.seg].join(','));
+  if(state.region) p.set('reg',state.region);
+  if(state.month) p.set('mo',state.month);
+  const s=p.toString();
+  history.replaceState(null,'', s? '#'+s : location.pathname+location.search);
+}
+function applyHash(){
+  const h=location.hash.replace(/^#/,''); if(!h) return;
+  const p=new URLSearchParams(h);
+  (p.get('law')||'').split(',').filter(Boolean).forEach(v=>state.law.add(v));
+  (p.get('m')||'').split(',').filter(Boolean).forEach(v=>state.method.add(v));
+  (p.get('seg')||'').split(',').filter(Boolean).forEach(v=>state.seg.add(v));
+  if(p.get('reg')) state.region=p.get('reg');
+  if(p.get('mo')) state.month=p.get('mo');
+}
+
+// ── экспорт CSV текущей выборки ──
+function exportCSV(){
+  const F=filtered().filter(r=> !CUSTOMER || r.c===CUSTOMER);
+  const head=['law','method','price_rub','region','month','stage','customer'];
+  const esc=v=>{ v=v==null?'':String(v); return /[",;\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; };
+  const lines=[head.join(';')].concat(F.map(r=>[r.law==='44'?'44-ФЗ':'223-ФЗ',r.mt,r.p??'',r.rg??'',r.mo??'',r.st,r.c].map(esc).join(';')));
+  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`goszakaz_${F.length}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
 </script>
 </body>
