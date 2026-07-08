@@ -224,3 +224,14 @@ footer code { background: var(--surface); padding: 1px 6px; border-radius: 4px; 
   .dos-body { grid-template-columns: 1fr; justify-items: center; }
   .dos-metrics { width: 100%; }
 }
+
+/* Подписи регионов на карте */
+.map-label {
+  fill: rgba(255,255,255,.82);
+  font-size: 9px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(12,17,28,.7);
+  stroke-width: 2.4px;
+  pointer-events: none;
+}

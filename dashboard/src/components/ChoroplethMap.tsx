@@ -20,7 +20,19 @@ const MODES: { k: Mode; label: string; how: string; hue: [number, number, number
     how: 'Где меньше закупок у единственного поставщика — честной заявкой зайти проще.' },
 ]
 
-interface Feat { region: string; d: string }
+interface Feat { region: string; d: string; cx: number; cy: number; area: number }
+
+// короткое имя региона для подписи на карте
+function shortReg(name: string): string {
+  if (/Ханты-Мансийский/.test(name)) return 'Югра'
+  if (/Ямало/.test(name)) return 'ЯНАО'
+  return name
+    .replace('Республика ', '').replace(' Республика', '')
+    .replace(' автономный округ', '').replace(' автономная область', '')
+    .replace(' область', '').replace(' край', '')
+    .replace('город ', '').replace('г. ', '')
+    .replace(/ — .*/, '').trim()
+}
 interface Agg { sum: number; count: number; drops: number[]; single: number }
 type Ring = [number, number][]
 type Geom =
@@ -61,16 +73,15 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
       if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon
       if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat
     })
-    // Заполняем весь кадр (независимые масштабы по осям), чтобы карта была крупной и не
-    // тонула в тёмных полях. Лёгкая коррекция ширины на косинус широты, но с ограничением
-    // снизу — иначе страна выходит слишком приплюснутой по вертикали.
+    // Крупная карта, но с воздухом по краям, чтобы Дальний Восток и Кавказ не упирались в
+    // границу блока. Поля по осям раздельные; лёгкая коррекция ширины на косинус широты.
     const midLat = ((minLat + maxLat) / 2) * Math.PI / 180
     const cos = Math.max(0.72, Math.cos(midLat))
-    const pad = 8
-    const kx = (W - pad * 2) / ((maxLon - minLon) * cos)
-    const ky = (H - pad * 2) / (maxLat - minLat)
-    const px = (lon: number) => pad + (lon - minLon) * cos * kx
-    const py = (lat: number) => pad + (maxLat - lat) * ky   // север сверху
+    const padX = 22, padY = 26
+    const kx = (W - padX * 2) / ((maxLon - minLon) * cos)
+    const ky = (H - padY * 2) / (maxLat - minLat)
+    const px = (lon: number) => padX + (lon - minLon) * cos * kx
+    const py = (lat: number) => padY + (maxLat - lat) * ky   // север сверху
 
     const ringPath = (ring: [number, number][]) =>
       'M' + ring.map(([x, y]) => `${px(x).toFixed(1)} ${py(y).toFixed(1)}`).join('L') + 'Z'
@@ -80,7 +91,23 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
       const g = f.geometry
       const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates
       const d = polys.map((poly) => poly.map(ringPath).join('')).join('')
-      if (d) fs.push({ region: f.properties.region, d })
+      if (!d) continue
+      // центроид и площадь по крупнейшему кольцу — для подписи региона
+      let big: [number, number][] = []
+      for (const poly of polys) if (poly[0] && poly[0].length > big.length) big = poly[0]
+      let sx = 0, sy = 0, minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9
+      for (const [lo, la] of big) {
+        const X = px(lo), Y = py(la)
+        sx += X; sy += Y
+        minx = Math.min(minx, X); maxx = Math.max(maxx, X)
+        miny = Math.min(miny, Y); maxy = Math.max(maxy, Y)
+      }
+      const n = big.length || 1
+      fs.push({
+        region: f.properties.region, d,
+        cx: sx / n, cy: sy / n,
+        area: (maxx - minx) * (maxy - miny),
+      })
     }
     return fs
   }, [raw])
@@ -143,6 +170,15 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
   const cur = MODES.find((m) => m.k === mode)!
   const withData = feats.filter((f) => metric(agg[f.region]) != null).length
 
+  // подписи: крупнейшие по площади регионы с данными — чтобы имя влезло и читалось
+  const labels = useMemo(() => {
+    return feats
+      .filter((f) => metric(agg[f.region]) != null && f.area > 1400)
+      .sort((a, b) => b.area - a.area)
+      .slice(0, 11)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feats, agg, mode])
+
   const tipFor = (region: string) => {
     const a = agg[region]
     const md = a?.drops.length ? median(a.drops) : null
@@ -203,6 +239,14 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
             />
           )
         })}
+        {/* подписи крупнейших регионов */}
+        {labels.map((f) => (
+          <text key={'lb' + f.region} x={f.cx} y={f.cy} className="map-label"
+                textAnchor="middle" dominantBaseline="middle"
+                opacity={selected && selected !== f.region ? 0.25 : 1}>
+            {shortReg(f.region)}
+          </text>
+        ))}
       </svg>
 
       {feats.length > 0 && (

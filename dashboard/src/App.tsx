@@ -60,10 +60,10 @@ export default function App() {
     fetch(`${import.meta.env.BASE_URL}rows.json`)
       .then((r) => r.json())
       .then((d: RowsFile & { suppliers?: Supplier[] }) => {
+        const f = parseHash()   // читаем хэш ДО setData: setData триггерит writeHash и стирает его
         useStore.getState().setData(d.rows, d.generated_period)
         setMeta({ source: d.source, period: d.generated_period })
         setSuppliers(d.suppliers ?? [])
-        const f = parseHash()
         if (f) useStore.getState().hydrate(f)
       })
       .catch((e) => console.error('rows.json load failed', e))
@@ -129,7 +129,7 @@ export default function App() {
               <HeatMap rows={filtered} />
               <Histogram rows={filtered} market={s.rows} filtered={anyFilter} />
             </div>
-            <Competitors suppliers={suppliers} />
+            <Competitors suppliers={suppliers} region={s.region} />
             <Pareto rows={filtered} />
           </div>
           <Insights filtered={filtered} market={s.rows} />

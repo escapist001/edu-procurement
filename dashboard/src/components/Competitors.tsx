@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { moneyR, pct } from '../lib/format'
 
@@ -33,23 +33,42 @@ const AXES: { key: keyof Supplier['axes']; label: string }[] = [
   { key: 'entrench', label: 'Окоп.' },
 ]
 
-export function Competitors({ suppliers }: { suppliers: Supplier[] }) {
+export function Competitors({ suppliers, region }: { suppliers: Supplier[]; region: string | null }) {
   const [sel, setSel] = useState(0)
+  // при выбранном регионе — только конкуренты, активные в нём (угроза «именно тебе»)
+  const list = useMemo(
+    () => (region ? suppliers.filter((s) => s.regions.includes(region)) : suppliers),
+    [suppliers, region],
+  )
+  useEffect(() => { setSel(0) }, [region])
   if (!suppliers?.length) return null
-  const s = suppliers[Math.min(sel, suppliers.length - 1)]
+
+  if (region && !list.length) {
+    return (
+      <div className="panel">
+        <div className="eyebrow"><span className="num">03</span>С кем · разведка конкурентов</div>
+        <h2>Досье: конкуренты в регионе «{region}»</h2>
+        <p className="how" style={{ padding: '30px 0' }}>
+          В выборке нет данных о победителях госзакупок в этом регионе. Сбрось фильтр региона, чтобы увидеть рынок целиком.
+        </p>
+      </div>
+    )
+  }
+  const s = list[Math.min(sel, list.length - 1)]
 
   return (
     <div className="panel">
       <div className="eyebrow"><span className="num">03</span>С кем · разведка конкурентов</div>
-      <h2>Досье: с кем столкнёшься на рынке</h2>
+      <h2>{region ? `Досье: конкуренты в регионе «${region}»` : 'Досье: с кем столкнёшься на рынке'}</h2>
       <p className="how">
-        Реальные победители госзакупок из реестра контрактов, ранжированы по <b>Индексу угрозы</b>. Выбери —
-        досье раскроет профиль и подскажет, как против него играть.
+        {region
+          ? <>Победители госзакупок, активные в этом регионе, по <b>Индексу угрозы</b>. Кликни регион на карте, чтобы сменить, или сбрось фильтр.</>
+          : <>Реальные победители госзакупок из реестра контрактов, ранжированы по <b>Индексу угрозы</b>. Выбери — досье раскроет профиль и подскажет, как против него играть.</>}
       </p>
 
       <div className="dos-grid">
         <div className="dos-list">
-          {suppliers.slice(0, 15).map((sup, i) => {
+          {list.slice(0, 15).map((sup, i) => {
             const a = ARCH[sup.type]
             const on = i === sel
             return (
