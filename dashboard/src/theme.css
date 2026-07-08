@@ -120,3 +120,24 @@ footer code { background: var(--surface); padding: 1px 6px; border-radius: 4px; 
 @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } .fb-right { margin-left: 0; width: 100%; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+
+.win { font-size: 12.5px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.win b { color: var(--amber); }
+
+/* Печатный отчёт */
+.print-report { display: none; }
+@media print {
+  body * { visibility: hidden; }
+  .print-report, .print-report * { visibility: visible; }
+  .print-report { display: block; position: absolute; left: 0; top: 0; width: 100%; padding: 24px 32px;
+    color: #111; background: #fff; font-family: 'Golos Text', sans-serif; }
+  .print-report h1 { font-size: 23px; margin: 0 0 4px; }
+  .print-report .pr-scope { color: #555; font-size: 13px; margin-bottom: 18px; }
+  .print-report .pr-kpis { display: flex; gap: 28px; margin-bottom: 20px; }
+  .print-report .pr-kpis b { display: block; font-size: 22px; font-family: 'JetBrains Mono', monospace; }
+  .print-report .pr-kpis span { font-size: 11px; color: #666; }
+  .print-report h2 { font-size: 15px; margin: 18px 0 8px; }
+  .print-report .pr-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .print-report .pr-tbl th, .print-report .pr-tbl td { border-bottom: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+  .print-report .pr-foot { margin-top: 22px; font-size: 11px; color: #888; }
+}

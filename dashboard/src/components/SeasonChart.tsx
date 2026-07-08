@@ -22,6 +22,23 @@ export function SeasonChart({ rows, selected, onSelect }: { rows: Row[]; selecte
     .y((d) => yR(d.sum))
   const path = lineGen(data) || ''
 
+  // окно входа: лучшее окно из 3 подряд идущих месяцев по деньгам
+  const win = useMemo(() => {
+    const total = data.reduce((a, d) => a + d.sum, 0)
+    if (data.length < 2 || !total) return null
+    const k = Math.min(3, data.length)
+    let bestI = 0
+    let bestS = -1
+    for (let i = 0; i + k <= data.length; i++) {
+      const s = data.slice(i, i + k).reduce((a, d) => a + d.sum, 0)
+      if (s > bestS) {
+        bestS = s
+        bestI = i
+      }
+    }
+    return { months: data.slice(bestI, bestI + k).map((d) => d.key), share: Math.round((bestS / total) * 100) }
+  }, [data])
+
   return (
     <div className="panel">
       <div className="eyebrow"><span className="num">02</span>Когда · сезонность</div>
@@ -78,6 +95,12 @@ export function SeasonChart({ rows, selected, onSelect }: { rows: Row[]; selecte
           </text>
         ))}
       </svg>
+      {win && (
+        <div className="win">
+          Окно входа: <b>{win.months.map(monLabel).join(' – ')}</b> — в эти месяцы размещается <b>{win.share}%</b> денег.
+          Заявку и обеспечение готовить заранее.
+        </div>
+      )}
     </div>
   )
 }

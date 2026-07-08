@@ -17,6 +17,9 @@ import { CancelChart } from './components/CancelChart'
 import { HeatMap } from './components/HeatMap'
 import { Histogram } from './components/Histogram'
 import { Pareto } from './components/Pareto'
+import { Dossier } from './components/Dossier'
+import { Scenarios } from './components/Scenarios'
+import { Report } from './components/Report'
 
 function parseHash(): Partial<Filters> | null {
   const h = location.hash.replace(/^#/, '')
@@ -102,8 +105,10 @@ export default function App() {
       <FilterBar regions={regions} />
       <div className="wrap">
         <Kpis filtered={filtered} market={s.rows} />
+        <Scenarios />
         <div className="layout">
           <div className="col-main">
+            <Dossier all={s.rows} />
             <RegionMap rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
             <Scoring filtered={filtered} market={s.rows} />
             <WhatIf filtered={filtered} />
@@ -131,9 +136,12 @@ export default function App() {
             Стек: <code>parser.py</code> (requests + BeautifulSoup) · <code>analysis.py</code> (pandas) · дашборд — React
             + собственные SVG-графики на D3-шкалах и Framer Motion, всё считается в браузере из <code>rows.json</code>.
           </div>
-          <button className="btn-ghost" style={{ marginTop: 12 }} onClick={exportCSV}>
-            ⭳ Экспорт выборки в CSV
-          </button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+            <button className="btn-ghost" onClick={exportCSV}>
+              ⭳ Экспорт выборки в CSV
+            </button>
+            <Report filtered={filtered} market={s.rows} />
+          </div>
         </footer>
       </div>
       <TipLayer />
