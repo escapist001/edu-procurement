@@ -58,30 +58,28 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
       .catch(() => setRaw(null))
   }, [])
 
-  const feats = useMemo<Feat[]>(() => {
-    if (!raw) return []
+  const { feats, vh } = useMemo<{ feats: Feat[]; vh: number }>(() => {
+    if (!raw) return { feats: [], vh: H }
     // bbox всех точек
     let minLon = 999, maxLon = -999, minLat = 999, maxLat = -999
-    const eachPt = (cb: (lon: number, lat: number) => void) => {
-      for (const f of raw.features as { geometry: Geom }[]) {
-        const g = f.geometry
-        const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates
-        for (const poly of polys) for (const ring of poly) for (const [x, y] of ring) cb(x, y)
+    for (const f of raw.features as { geometry: Geom }[]) {
+      const g = f.geometry
+      const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates
+      for (const poly of polys) for (const ring of poly) for (const [x, y] of ring) {
+        if (x < minLon) minLon = x; if (x > maxLon) maxLon = x
+        if (y < minLat) minLat = y; if (y > maxLat) maxLat = y
       }
     }
-    eachPt((lon, lat) => {
-      if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon
-      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat
-    })
-    // Крупная карта, но с воздухом по краям, чтобы Дальний Восток и Кавказ не упирались в
-    // границу блока. Поля по осям раздельные; лёгкая коррекция ширины на косинус широты.
+    // Вписываем карту ЦЕЛИКОМ с сохранением аспекта (contain), а высоту кадра подгоняем под
+    // карту — так Дальний Восток и Кавказ гарантированно не обрежутся. Масштаб задаёт ширина
+    // (страна широкая); лёгкая коррекция долготы на косинус широты, чтобы не растянуть по X.
     const midLat = ((minLat + maxLat) / 2) * Math.PI / 180
-    const cos = Math.max(0.72, Math.cos(midLat))
-    const padX = 22, padY = 26
-    const kx = (W - padX * 2) / ((maxLon - minLon) * cos)
-    const ky = (H - padY * 2) / (maxLat - minLat)
-    const px = (lon: number) => padX + (lon - minLon) * cos * kx
-    const py = (lat: number) => padY + (maxLat - lat) * ky   // север сверху
+    const cos = Math.max(0.62, Math.cos(midLat))
+    const pad = 20
+    const s = (W - pad * 2) / ((maxLon - minLon) * cos)
+    const vhCalc = (maxLat - minLat) * s + pad * 2
+    const px = (lon: number) => pad + (lon - minLon) * cos * s
+    const py = (lat: number) => pad + (maxLat - lat) * s   // север сверху
 
     const ringPath = (ring: [number, number][]) =>
       'M' + ring.map(([x, y]) => `${px(x).toFixed(1)} ${py(y).toFixed(1)}`).join('L') + 'Z'
@@ -92,7 +90,6 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
       const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates
       const d = polys.map((poly) => poly.map(ringPath).join('')).join('')
       if (!d) continue
-      // центроид и площадь по крупнейшему кольцу — для подписи региона
       let big: [number, number][] = []
       for (const poly of polys) if (poly[0] && poly[0].length > big.length) big = poly[0]
       let sx = 0, sy = 0, minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9
@@ -109,7 +106,7 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
         area: (maxx - minx) * (maxy - miny),
       })
     }
-    return fs
+    return { feats: fs, vh: vhCalc }
   }, [raw])
 
   // агрегаты по региону из текущей выборки
@@ -218,7 +215,7 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
 
       {!feats.length && <p className="how" style={{ padding: '80px 0', textAlign: 'center' }}>Загрузка карты…</p>}
 
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: feats.length ? 'block' : 'none' }}
+      <svg viewBox={`0 0 ${W} ${vh}`} width="100%" style={{ display: feats.length ? 'block' : 'none' }}
            onMouseLeave={() => tip.hide()}>
         {feats.map((f, i) => {
           const dim = selected && selected !== f.region
