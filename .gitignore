@@ -5,6 +5,7 @@ __pycache__/
 # Служебное: скриншоты-проверки, логи сбора, большой исходник карты
 data/_*
 data/russia.geojson
+data/contracts_reg.csv
 РАЗВЕДКА_источников.md
 
 # Node

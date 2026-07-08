@@ -18,6 +18,8 @@ import { HeatMap } from './components/HeatMap'
 import { Histogram } from './components/Histogram'
 import { Pareto } from './components/Pareto'
 import { Dossier } from './components/Dossier'
+import { Competitors } from './components/Competitors'
+import type { Supplier } from './components/Competitors'
 import { Scenarios } from './components/Scenarios'
 import { Report } from './components/Report'
 
@@ -52,13 +54,15 @@ function writeHash(f: Filters) {
 export default function App() {
   const s = useStore()
   const [meta, setMeta] = useState<{ source: string; period: [string, string] } | null>(null)
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}rows.json`)
       .then((r) => r.json())
-      .then((d: RowsFile) => {
+      .then((d: RowsFile & { suppliers?: Supplier[] }) => {
         useStore.getState().setData(d.rows, d.generated_period)
         setMeta({ source: d.source, period: d.generated_period })
+        setSuppliers(d.suppliers ?? [])
         const f = parseHash()
         if (f) useStore.getState().hydrate(f)
       })
@@ -125,6 +129,7 @@ export default function App() {
               <HeatMap rows={filtered} />
               <Histogram rows={filtered} market={s.rows} filtered={anyFilter} />
             </div>
+            <Competitors suppliers={suppliers} />
             <Pareto rows={filtered} />
           </div>
           <Insights filtered={filtered} market={s.rows} />
