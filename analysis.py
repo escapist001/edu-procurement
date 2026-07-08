@@ -146,6 +146,7 @@ def main() -> None:
     for _, r in dd.iterrows():
         price = r["price_rub"]
         rows.append({
+            "n": str(r["number"]),
             "law": "44" if r["law"] == "44-ФЗ" else "223",
             "mt": short_method(r["method"]),
             "p": None if pd.isna(price) else int(price),
@@ -154,13 +155,17 @@ def main() -> None:
             "st": r["stage"],
             "c": short_customer(r["customer"]),
         })
-    rows_out = ROOT / "docs" / "rows.json"
-    rows_out.write_text(json.dumps({
+    rows_payload = json.dumps({
         "source": payload["source"],
         "generated_period": [kpis["date_from"], kpis["date_to"]],
         "rows": rows,
-    }, ensure_ascii=False), encoding="utf-8")
-    print(f"Построчно выгружено: {len(rows)} записей в {rows_out.name}")
+    }, ensure_ascii=False)
+    # пишем и в docs (текущий сайт), и в public React-приложения
+    for rel in ("docs/rows.json", "dashboard/public/rows.json"):
+        out = ROOT / rel
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(rows_payload, encoding="utf-8")
+    print(f"Построчно выгружено: {len(rows)} записей (docs + dashboard/public)")
 
     print(f"Записей: {kpis['records']}")
     print(f"Сумма НМЦК: {kpis['total_sum']:,.0f} руб")
