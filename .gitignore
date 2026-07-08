@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Служебное: скриншоты-проверки, логи сбора, большой исходник карты
+data/_*
+data/russia.geojson
+РАЗВЕДКА_источников.md
+
+# Node
+node_modules/
+dashboard/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

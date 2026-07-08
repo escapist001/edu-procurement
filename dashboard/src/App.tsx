@@ -11,7 +11,7 @@ import { Kpis } from './components/Kpis'
 import { Insights } from './components/Insights'
 import { Scoring } from './components/Scoring'
 import { WhatIf } from './components/WhatIf'
-import { RegionMap } from './components/RegionMap'
+import { ChoroplethMap } from './components/ChoroplethMap'
 import { SeasonChart } from './components/SeasonChart'
 import { CancelChart } from './components/CancelChart'
 import { HeatMap } from './components/HeatMap'
@@ -20,7 +20,6 @@ import { Pareto } from './components/Pareto'
 import { Dossier } from './components/Dossier'
 import { Scenarios } from './components/Scenarios'
 import { Report } from './components/Report'
-import { RegionModes } from './components/RegionModes'
 
 function parseHash(): Partial<Filters> | null {
   const h = location.hash.replace(/^#/, '')
@@ -77,6 +76,10 @@ export default function App() {
     [s.rows],
   )
   const numbers = useMemo(() => s.rows.map((r) => r.n), [s.rows])
+  const totals = useMemo(() => ({
+    sum: s.rows.reduce((a, r) => a + (r.p ?? 0), 0),
+    withOutcome: s.rows.filter((r) => r.dp != null).length,
+  }), [s.rows])
   const anyFilter = !!(s.law.length || s.method.length || s.seg.length || s.region || s.month || s.customer || s.noOutliers)
 
   function exportCSV() {
@@ -102,7 +105,8 @@ export default function App() {
 
   return (
     <>
-      <Header source={meta?.source ?? ''} period={meta?.period ?? ['', '']} numbers={numbers} />
+      <Header source={meta?.source ?? ''} period={meta?.period ?? ['', '']} numbers={numbers}
+              records={s.rows.length} totalSum={totals.sum} withOutcome={totals.withOutcome} />
       <FilterBar regions={regions} />
       <div className="wrap">
         <Kpis filtered={filtered} market={s.rows} />
@@ -110,8 +114,7 @@ export default function App() {
         <div className="layout">
           <div className="col-main">
             <Dossier all={s.rows} />
-            <RegionMap rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
-            <RegionModes rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
+            <ChoroplethMap rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
             <Scoring filtered={filtered} market={s.rows} />
             <WhatIf filtered={filtered} />
             <div className="grid2">
@@ -129,14 +132,16 @@ export default function App() {
 
         <footer>
           <div>
-            <b style={{ color: 'var(--muted)' }}>Методология.</b> Запрос «учебное оборудование» (44-ФЗ + 223-ФЗ) в
-            расширенном поиске ЕИС; парсер проходит выдачу и извлекает поля из карточек. Регион — эвристика по названию
-            заказчика. Ценовые сегменты — по порогам 44-ФЗ. Выборка — снимок ~1000 свежих записей, не вся генеральная
-            совокупность.
+            <b style={{ color: 'var(--muted)' }}>Данные.</b> 10 022 закупки учебного оборудования из ЕИС
+            (44-ФЗ + 223-ФЗ), период с 2024 года. Собраны оконным обходом расширенного поиска. Регион заказчика —
+            из структурных кодов (адрес и ИНН по справочнику ФНС), а не по названию. <b style={{ color: 'var(--muted)' }}>Снижение
+            цены</b> — реальный исход торгов: НМЦК против предложения победителя из протоколов подведения итогов
+            (получено для завершённых процедур 44-ФЗ). Ценовые сегменты — по порогам 44-ФЗ.
           </div>
           <div style={{ marginTop: 8 }}>
-            Стек: <code>parser.py</code> (requests + BeautifulSoup) · <code>analysis.py</code> (pandas) · дашборд — React
-            + собственные SVG-графики на D3-шкалах и Framer Motion, всё считается в браузере из <code>rows.json</code>.
+            Стек: конвейер на Python (сбор, чистый регион, реальные снижения) → <code>rows.json</code>; дашборд —
+            Vite + React + TypeScript, собственные SVG-графики и полигональная карта на своей проекции, Framer Motion.
+            Все срезы считаются в браузере.
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             <button className="btn-ghost" onClick={exportCSV}>

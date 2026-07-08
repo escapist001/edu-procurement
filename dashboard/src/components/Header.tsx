@@ -1,9 +1,13 @@
 import { motion, useReducedMotion } from 'framer-motion'
-import { num } from '../lib/format'
+import { money, num } from '../lib/format'
 
-export function Header({ source, period, numbers }: { source: string; period: [string, string]; numbers: string[] }) {
+export function Header({ source, period, numbers, records, totalSum, withOutcome }: {
+  source: string; period: [string, string]; numbers: string[]
+  records: number; totalSum: number; withOutcome: number
+}) {
   const reduce = useReducedMotion()
   const strip = numbers.slice(0, 60).join('   ')
+  const years = period[0] && period[1] ? `${period[0].slice(0, 4)}–${period[1].slice(0, 4)}` : ''
   return (
     <header>
       <div className="marquee" aria-hidden>
@@ -23,12 +27,13 @@ export function Header({ source, period, numbers }: { source: string; period: [s
           Куда поставщику идти <span className="amber">за деньгами</span>
         </h1>
         <p className="lead">
-          1 000 контрактов с zakupki.gov.ru на <b>5,76 млрд ₽</b>, декабрь 2025 — июль 2026, собраны собственным
-          парсером ЕИС. Один вопрос: в какой регион ехать, через какую процедуру заходить, с каким чеком и когда.
-          Фильтруй — весь экран пересчитывается под твою гипотезу.
+          {num(records)} закупок учебного оборудования из ЕИС на <b>{money(totalSum)} ₽</b>, {years} годы. Для{' '}
+          <b>{num(withOutcome)}</b> завершённых торгов добыт реальный исход — на сколько сбили цену. Один вопрос:
+          в какой регион ехать, через какую процедуру заходить, с каким чеком и когда. Фильтруй — весь экран
+          пересчитывается под твою гипотезу.
         </p>
         <div className="prov mono">
-          источник: {source.split('·')[0].trim()} · парсер: python (requests + bs4) · {num(1000)} записей · период{' '}
+          источник: {source.split('·')[0].trim()} · сбор: python-конвейер · {num(records)} записей · период{' '}
           {period[0]} – {period[1]}
         </div>
       </div>
