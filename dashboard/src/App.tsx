@@ -20,6 +20,7 @@ import { Pareto } from './components/Pareto'
 import { Dossier } from './components/Dossier'
 import { Scenarios } from './components/Scenarios'
 import { Report } from './components/Report'
+import { RegionModes } from './components/RegionModes'
 
 function parseHash(): Partial<Filters> | null {
   const h = location.hash.replace(/^#/, '')
@@ -110,6 +111,7 @@ export default function App() {
           <div className="col-main">
             <Dossier all={s.rows} />
             <RegionMap rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
+            <RegionModes rows={regionRows} selected={s.region} onSelect={(r) => s.set('region', r)} />
             <Scoring filtered={filtered} market={s.rows} />
             <WhatIf filtered={filtered} />
             <div className="grid2">
