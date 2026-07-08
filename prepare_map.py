@@ -47,9 +47,7 @@ def simplify_ring(ring: list) -> list:
     for i, (x, y) in enumerate(ring):
         if step > 1 and i % step and 0 < i < n - 1:
             continue
-        # арктическое побережье срезаем по 72°N: материковые регионы (Таймыр, Саха) уходят
-        # выше в зону, где коническая проекция выворачивается кляксой. Север станет ровным.
-        p = [round(x, COORD_PREC), round(min(y, 72.0), COORD_PREC)]
+        p = [round(x, COORD_PREC), round(y, COORD_PREC)]
         if not out or out[-1] != p:
             out.append(p)
     if len(out) >= 3 and out[0] != out[-1]:
