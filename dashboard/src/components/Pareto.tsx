@@ -39,7 +39,8 @@ export function Pareto({ rows }: { rows: Row[] }) {
       <div className="eyebrow"><span className="num">04</span>С кем · заказчики</div>
       <h2>Кто держит деньги: топ и концентрация</h2>
       <p className="how">Топ-15 заказчиков по сумме НМЦК + кумулятивная доля рынка. Клик по столбцу — фильтр.</p>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" onMouseLeave={() => tip.hide()}>
+      {!top.length && <p className="how" style={{ padding: '40px 0', textAlign: 'center' }}>Под текущий фильтр заказчиков нет.</p>}
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: top.length ? 'block' : 'none' }} onMouseLeave={() => tip.hide()}>
         {yL.ticks(4).map((t) => (
           <g key={t}>
             <line className="grid-line" x1={PL} x2={W - PR} y1={yL(t)} y2={yL(t)} />

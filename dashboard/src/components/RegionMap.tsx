@@ -57,7 +57,12 @@ export function RegionMap({ rows, selected, onSelect }: { rows: Row[]; selected:
         Пузырь — регион. Правее — больше денег, выше — крупнее медианный чек, больше пузырь — больше лотов, цвет —
         доминирующая процедура. Клик — фильтр по региону.
       </p>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }} onMouseLeave={() => tip.hide()}>
+      {!pts.length && (
+        <p className="how" style={{ padding: '52px 0', textAlign: 'center' }}>
+          Под текущий фильтр регионов нет — ослабь условия или сбрось фильтры.
+        </p>
+      )}
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: pts.length ? 'block' : 'none' }} onMouseLeave={() => tip.hide()}>
         {/* сетка + оси */}
         {yTicks.map((t) => (
           <g key={'y' + t}>
