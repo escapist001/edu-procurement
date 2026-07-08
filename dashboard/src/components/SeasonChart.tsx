@@ -84,11 +84,16 @@ export function SeasonChart({ rows, selected, onSelect }: { rows: Row[]; selecte
           animate={{ pathLength: 1 }}
           transition={{ duration: 0.9, ease: 'easeOut' }}
         />
-        {data.map((d) => (
-          <text key={'l' + d.key} className="axis-txt" x={(xb(d.key) || 0) + xb.bandwidth() / 2} y={H - PB + 15} textAnchor="middle">
-            {monLabel(d.key)}
-          </text>
-        ))}
+        {data.map((d, i) => {
+          // показываем не каждую подпись, а с шагом — иначе месяцы налезают друг на друга
+          const step = Math.ceil(data.length / 7)
+          if (i % step && i !== data.length - 1) return null
+          return (
+            <text key={'l' + d.key} className="axis-txt" x={(xb(d.key) || 0) + xb.bandwidth() / 2} y={H - PB + 15} textAnchor="middle">
+              {monLabel(d.key)}
+            </text>
+          )
+        })}
         {yR.ticks(4).map((t) => (
           <text key={'r' + t} className="axis-txt" x={W - PR + 5} y={yR(t) + 3}>
             {money(t)}

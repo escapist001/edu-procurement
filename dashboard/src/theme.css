@@ -141,3 +141,32 @@ footer code { background: var(--surface); padding: 1px 6px; border-radius: 4px; 
   .print-report .pr-tbl th, .print-report .pr-tbl td { border-bottom: 1px solid #ddd; padding: 6px 8px; text-align: left; }
   .print-report .pr-foot { margin-top: 22px; font-size: 11px; color: #888; }
 }
+
+/* What-if: цепочка расчёта поток → работа → победы → выручка */
+.wi-chain {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1.15fr;
+  align-items: stretch;
+  gap: 6px;
+}
+.wi-step {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.wi-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  font-size: 20px;
+  font-weight: 300;
+}
+@media (max-width: 760px) {
+  .wi-chain { grid-template-columns: 1fr; }
+  .wi-arrow { transform: rotate(90deg); padding: 2px 0; }
+}

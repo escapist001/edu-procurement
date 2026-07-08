@@ -8,7 +8,7 @@ import { useTip } from '../lib/tooltip'
 // Готовые d3-проекции для страны, тянущейся от 20° до 180°E и до полюса, дают артефакты
 // (апекс конической/горизонт/разрыв на 180°). Простая линейная проекция предсказуема: без
 // клякс и разрывов, а лёгкое искажение площадей для обзорной карты рынка несущественно.
-const W = 900, H = 380
+const W = 900, H = 450
 
 type Mode = 'money' | 'drop' | 'ease'
 const MODES: { k: Mode; label: string; how: string; hue: [number, number, number] }[] = [
@@ -61,17 +61,16 @@ export function ChoroplethMap({ rows, selected, onSelect }: {
       if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon
       if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat
     })
+    // Заполняем весь кадр (независимые масштабы по осям), чтобы карта была крупной и не
+    // тонула в тёмных полях. Лёгкая коррекция ширины на косинус широты, но с ограничением
+    // снизу — иначе страна выходит слишком приплюснутой по вертикали.
     const midLat = ((minLat + maxLat) / 2) * Math.PI / 180
-    const cos = Math.cos(midLat)
-    // масштаб: вписать в W×H с полями, ширину сжать на cos(lat), чтобы страна не растянулась
-    const pad = 10
-    const s = Math.min((W - pad * 2) / ((maxLon - minLon) * cos), (H - pad * 2) / (maxLat - minLat))
-    const wUsed = (maxLon - minLon) * cos * s
-    const hUsed = (maxLat - minLat) * s
-    const ox = (W - wUsed) / 2
-    const oy = (H - hUsed) / 2
-    const px = (lon: number) => ox + (lon - minLon) * cos * s
-    const py = (lat: number) => oy + (maxLat - lat) * s   // север сверху
+    const cos = Math.max(0.72, Math.cos(midLat))
+    const pad = 8
+    const kx = (W - pad * 2) / ((maxLon - minLon) * cos)
+    const ky = (H - pad * 2) / (maxLat - minLat)
+    const px = (lon: number) => pad + (lon - minLon) * cos * kx
+    const py = (lat: number) => pad + (maxLat - lat) * ky   // север сверху
 
     const ringPath = (ring: [number, number][]) =>
       'M' + ring.map(([x, y]) => `${px(x).toFixed(1)} ${py(y).toFixed(1)}`).join('L') + 'Z'
